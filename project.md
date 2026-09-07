@@ -107,3 +107,25 @@ Key Objectives are:
 - Store customers contact and delivery information
 - Assign meal package to customers
 - Track total number of active meals 
+- Track meals consumed.
+- Track meals remaining.
+- Automatically calculate package expiry dates.
+- Track subscription status.
+- Track payment status.
+- Store dietary preferences.
+- Manage customer delivery schedules.
+- Prevent meals from being delivered after package expiry.
+- Reduce manual operational errors.
+- Allow staff to quickly search and retrieve customer information.
+- Provide accurate information about active, completed, and expired subscriptions.
+- Create a foundation for future automation, analytics, and reporting.
+
+# Scope of the application
+
+
+
+
+
+
+
+
