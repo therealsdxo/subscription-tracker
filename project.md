@@ -177,3 +177,48 @@ HealthX allows authorized users to create and manage custom meal subscription pa
 
 Instead of restricting the system to predefined packages, users can define a package by specifying details such as:
 
+- Package name
+- Number of meals included
+- Maximum validity period
+- Package price 
+- Package description 
+- Package status 
+
+For example a user may create packages like 
+
+| Package | Meals Included | Maximum Subscription Duration | Price(in INR)
+|---|---:|---:|---:|
+| 25 Meal Package | 25 meals | 50 days | 6500
+| 50 Meal Package | 50 meals | 100 days | 9500
+| 90 Meal Package | 90 meals | 180 days | 14500
+
+These packages are examples and are not hardcoded into the application.
+
+An authorized user should be able to create new packages whenever required.
+For example, the business may later introduce:
+
+- 10 Meal Trial Package
+- 30 Meal Monthly Package
+- 60 Meal Transformation Package
+- 120 Meal Long-Term Package
+
+Each package should define its own meal allocation and validity period.
+The subscription validity period begins from the package start date.
+When a package is assigned to a customer, the system should automatically calculate the expected expiry date using:
+
+Expected End Date = Package Start Date + Package Validity Days
+
+For example, if a package contains 25 meals with a validity period of 50 days and the subscription begins on 01 September 2026, the system should calculate the expected expiry date based on 50 days from the start date.
+Any unused meals remaining after the subscription expiry date should no longer be considered valid unless an authorized user explicitly extends or modifies the subscription.
+
+Authorized users should also be able to:
+- Create a new meal package
+- View existing packages
+- Update package details
+- Activate or deactivate packages
+- Change package pricing
+- Modify the number of meals
+- Modify package validity duration
+
+A package that has already been used in previous subscriptions should not normally be permanently deleted, since historical subscription records may depend on it. Instead, the package should be marked as inactive.
+
