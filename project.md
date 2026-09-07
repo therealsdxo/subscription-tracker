@@ -78,25 +78,19 @@ Each customer may have different:
 Managing this information manually becomes increasingly difficult as the number of customers grows.
 Manual tracking can result in problems such as:
 
-Incorrect meal counts
+- Incorrect meal counts
 
-Delivering meals after a subscription has expired
-
-Missing customer deliveries
-
-Incorrect subscription expiry calculations
-
-Difficulty identifying active customers
-
-Difficulty tracking payments
-
-Duplicate or inconsistent customer information
-
-Difficulty retrieving customer history
-
-Lack of real-time visibility into business operations
+- Delivering meals after a subscription has expired
+- Missing customer deliveries
+- Incorrect subscription expiry calculations
+- Difficulty identifying active customers
+- Difficulty tracking payments
+- Duplicate or inconsistent customer information
+- Difficulty retrieving customer history
+- Lack of real-time visibility into business operations
 
 HealthX is intended to solve these problems by centralizing customer and subscription information within a structured application and database.
+
 
 # 3. Project Objective
 
@@ -120,12 +114,66 @@ Key Objectives are:
 - Provide accurate information about active, completed, and expired subscriptions.
 - Create a foundation for future automation, analytics, and reporting.
 
-# Scope of the application
+# 4. Scope of the application
 
+The initial version of the app should have:
 
+### Customer Management 
 
+The application should allow users to: 
 
+- Create customer record
+- View customer details 
+- Update customer information
+- Search customers
+- View customer subscription information
 
+### Subscription Management
+The system should:
 
+- Create a meal package
+- Assign a meal package to a customer 
+- Set a subscription start date 
+- Calculate the subscription expiry date
+- Track subscription status
+- Track meals allocated
 
+### Meal Tracking
+The system should:
+
+- Record every delivered meal
+- Reduce customers remaining meal balance
+- Maintain history of delivered meals
+
+### Delivery Management 
+The system should store:
+
+- Delivery address
+- Delivery schedule of each customer 
+- Dietary instructions
+- Delivery status
+
+### Payment Management
+The system should store:
+
+- Package price
+- Amount paid
+- Outstanding amount
+- Payment status 
+- Payment date
+
+### Subscription Monitoring 
+The system should:
+
+- Track active subscriptions
+- Completed subscriptions
+- Expired subscriptions
+- Renewed subscriptions
+- Subscriptions approaching expiry 
+- Number of times the customer has renewed the plan 
+
+# 5. Meal Packages
+HealthX allows authorized users to create and manage custom meal subscription packages based on the business's operational requirements.
+
+Instead of restricting the system to predefined packages, users can define a package by specifying details such as:
 
