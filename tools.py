@@ -1,10 +1,37 @@
 # These are helper tools that are gonna help us to do certain things in our app
 
-# Create User
-def create_user(user_list, user_id, user_name, user_phoneNo, user_address, user_package):
-    user = {
-        "user_id": user_id,
-        "user_name" : user_name,
+# Create User Function
+users = {}
+
+def create_user(users, user_id, user_name, user_phoneNo, user_address, user_package):
+    if user_id in users:
+        raise ValueError(f"User ID {user_id} already exists")
+    users[user_id] = {
+        "user_name": user_name,
         "user_phoneNo": user_phoneNo,
         "user_address": user_address,
+        "user_package": user_package
     }
+    return users[user_id]
+
+# Update Created User
+def update_user(users, user_id, **kwargs):
+    if user_id not in users:
+        raise ValueError(f"User ID {user_id} does not exist")
+    
+    users[user_id].update(kwargs)
+    return users[user_id]
+
+
+# Delete A particular user
+def delete_user(users, user_id):
+    if user_id not in users:
+        raise ValueError(f"User ID {user_id} does not exist")
+    
+    deleted_user = users.pop(user_id)
+    return deleted_user
+
+# Get User through User Id
+def get_user(users, user_id):
+    if user_id not in users:
+        raise ValueError(f"User ID {user_id} does not exist")
