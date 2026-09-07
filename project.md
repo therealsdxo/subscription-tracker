@@ -222,3 +222,28 @@ Authorized users should also be able to:
 
 A package that has already been used in previous subscriptions should not normally be permanently deleted, since historical subscription records may depend on it. Instead, the package should be marked as inactive.
 
+# 6. Business Logic 
+
+### BR-01: Customer Creation
+Authorized user may create Customers
+
+Every Customer must contain:
+
+- Customer Id
+- Customer Name 
+- Phone Number
+- Address
+- Email
+
+### BR-02: Update Customer
+Authorized users should be able to update customer information.
+
+### BR-03: Search Customer
+Users should be able to search using:
+
+- Customer Name 
+- Customer Number
+- Customer Id
+
+### BR-04: Delete Customer
+User should be able to delete the customer created 
