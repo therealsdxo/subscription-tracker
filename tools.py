@@ -35,3 +35,4 @@ def delete_user(users, user_id):
 def get_user(users, user_id):
     if user_id not in users:
         raise ValueError(f"User ID {user_id} does not exist")
+    return users[user_id]
