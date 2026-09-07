@@ -36,3 +36,16 @@ def get_user(users, user_id):
     if user_id not in users:
         raise ValueError(f"User ID {user_id} does not exist")
     return users[user_id]
+
+# Create package function
+packages = {}
+
+def create_package(packages, package_id, package_name, package_price, package_duration):
+    if package_id in packages:
+        raise ValueError(f"Package ID {package_id} already exists")
+    packages[package_id] = {
+        "package_name": package_name,
+        "package_price": package_price,
+        "package_duration": package_duration
+    }
+    return packages[package_id]
