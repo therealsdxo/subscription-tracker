@@ -92,18 +92,53 @@ FastAPI
 (React, HTMX, plain templates, Tailwind, Bootstrap)?
 
 ## Answer:
-
+Use:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+UI requirements:
+- Minimal
+- White
+- Off-white
+- Black
+- Slate
+- Very restrained rounded corners
+- No gradients
+- No glassmorphism
+- No generic AI dashboard aesthetic
 
 1.4 Database engine? (PostgreSQL, SQLite, MySQL, MongoDB)
 **[suggest: PostgreSQL for prod, SQLite for local dev]**
 
+## Answer:
+PostgreSQL for both development and production.
+
 1.5 Where will this be deployed / hosted? (local machine, a VPS, a PaaS like
 Render/Railway/Fly, cloud, on‑prem at the outlet)
+
+## Answer:
+I want to host it using AWS 
 
 1.6 Is the in‑memory `tools.py` code meant to be kept/extended, or replaced with
 a proper persistence layer? **[suggest: replace]**
 
+## Answer:
+Replace it with a proper persistence layer.
+
 1.7 Do you want automated tests from the start? Which framework — `pytest`?
+
+## Answer:
+Yes.
+Use:
+pytest
+Tests should start with:
+- Package business rules
+- Subscription creation
+- Expiry calculations
+- Meal deduction
+- Delivery reversal
+- Payment calculations
 
 ---
 
@@ -112,8 +147,19 @@ a proper persistence layer? **[suggest: replace]**
 2.1 Who uses this system — only internal staff, or do customers log in too?
 **[suggest: internal staff only for v1]**
 
+## Answer:
+Internal staff only for v1.
+
+
 2.2 What roles exist? e.g. Admin (manage packages, users, pricing) vs Staff
 (manage customers, record deliveries/payments). Or is everyone equal for v1?
+
+## Answer:
+Use two roles initially:
+ADMIN
+Can manage everything.
+STAFF
+Handles everyday operations.
 
 2.3 What can a non‑admin **not** do? (create/deactivate packages? change pricing?
 delete customers? issue refunds?)
