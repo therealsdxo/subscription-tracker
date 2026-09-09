@@ -224,7 +224,7 @@ A package that has already been used in previous subscriptions should not normal
 
 # 6. Business Logic 
 
-### BR-01: Customer Creation
+### BL-01: Customer Creation
 Authorized user may create Customers
 
 Every Customer must contain:
@@ -235,15 +235,125 @@ Every Customer must contain:
 - Address
 - Email
 
-### BR-02: Update Customer
+### BL-02: Update Customer
 Authorized users should be able to update customer information.
 
-### BR-03: Search Customer
+### BL-03: Search Customer
 Users should be able to search using:
 
 - Customer Name 
 - Customer Number
 - Customer Id
 
-### BR-04: Delete Customer
+### BL-04: Delete Customer
 User should be able to delete the customer created 
+
+### BL-05: Package Creation
+Authorized users may create meal packages.
+
+Every package must contain:
+- Package Name 
+- Number of Meals 
+- Validity Period
+- Package Price
+
+### BL-06: Package Meal Allocation 
+When a package is assigned to a subscription, the package's configured meal quantity determines the initial meal allocation.
+
+Number of meals in the package = Number of meals alloted to the customer
+
+### BL-07: Meal Balance Calculation
+Meals Remaining = Total Meals Allocated - Meals Consumed
+
+### BL-08: Package Validity
+Each meal package must contain a validity duration.
+
+### BL-09: Subscription Expiry Date
+The expected expiry date should be calculated automatically:
+
+expected_end_date = start_date + package.validity_days
+
+### BL-10: Subscription Completion
+A subscription is considered completed when:
+
+meals_remaining = 0
+
+The status becomes:
+
+COMPLETED
+
+### BL-11: Subscription Expiry
+
+A subscription becomes expired when the current date passes its expected expiry date.
+
+Status:
+
+EXPIRED
+
+### BL-12: Meal Balance Calculation
+
+Meals Remaining = Total Meals Allocated - Meals Consumed
+
+### BL-13: Meal Consumption
+
+Every successful meal delivery should consume the appropriate number of meals.
+
+For a standard delivery:
+
+meals_consumed += 1
+
+meals_remaining -= 1
+
+### BL-14: Invalid Meal Consumption
+
+A meal should not be deducted when a delivery is:
+
+Cancelled
+
+Skipped
+
+Failed
+
+Not delivered
+
+### BL-15: Subscription Status
+
+Possible statuses:
+
+ACTIVE
+
+COMPLETED
+
+EXPIRED
+
+PAUSED
+
+CANCELLED
+
+### BL-16: Package Status
+
+Possible package statuses:
+
+ACTIVE
+
+INACTIVE
+
+Inactive packages cannot be assigned to new subscriptions.
+
+### BL-17: Historical Package Integrity
+
+Changes made to package configurations must not alter existing subscription records.
+
+Critical package data should therefore be copied into the subscription when it is created.
+
+### BL-18: Payment Status
+
+Possible payment statuses include:
+
+PAID
+
+PARTIALLY_PAID
+
+UNPAID
+
+REFUNDED
