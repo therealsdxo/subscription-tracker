@@ -10,16 +10,16 @@ I've grouped questions by area. Section **0** lists contradictions in the curren
 
 ---
 
-## 0. Inconsistencies in project.md to resolve
+# 0. Inconsistencies in project.md to resolve
 
-0.1 Section 1 lists the customer record with subscription fields baked in
+ 0.1 Section 1 lists the customer record with subscription fields baked in
 (`customer_package`, `customer_numberOfMeals`, `customer_mealsLeft`,
 `customer_packageStartDate`, `customer_expectedEndDate`, `payment_status`,
 `subscription_status`, `resubscribe_number`). But `resubscribe_number` and the
 "Renewed subscriptions" monitoring imply a customer can have **many**
 subscriptions over time. Do you want:
 
-## Answer:
+#### Answer:
 Use a normalized model:
 Customer 1 → Many Subscriptions
 Customer information stays on the customer record. Package, meal balance, payment status, subscription dates, and subscription status belong to the subscription. This also allows full renewal history.
@@ -30,21 +30,21 @@ subscription records to stay intact. If a customer with past subscriptions is
 deleted, what should happen — block it, soft‑delete (hide but keep records), or
 hard‑delete and cascade everything?
 
-## Answer:
+#### Answer:
 Use soft delete.
 Deleting a customer should hide/deactivate them from normal operations but retain all historical subscriptions, deliveries, and payments.
 
 0.3 `BL-07` and `BL-12` are identical ("Meals Remaining = Total Allocated −
 Consumed"). Confirm that's just a duplicate and there's no second rule intended.
 
-## Answer:
+#### Answer:
 Yes. Treat this as a duplicate rule. Keep only:
 Meals Remaining = Total Meals Allocated - Meals Consumed
 
 0.4 Section 1 customer fields list `customer_phoneNo` but not email; `BL-01` makes
 **email** mandatory. Which contact fields are truly required vs optional?
 
-## Answer:
+#### Answer:
 Required:
 - Name
 - Phone number
@@ -59,13 +59,13 @@ described in **calendar days** ("start_date + validity_days"). Do Tuesdays (and
 any holidays) count toward the validity window, or should expiry be extended to
 skip non‑delivery days? See Q4.3.
 
-## Answer:
+#### Answer:
 Use calendar-day validity.
 Tuesdays and holidays still count toward package validity. A closed delivery day should not automatically extend the subscription.
 
 ---
 
-## 1. Tech stack & architecture
+# 1. Tech stack & architecture
 
 1.1 The repo is a Python 3.13 / `uv` project and currently just a CLI stub with
 in‑memory dicts (`tools.py`). `project.md` calls this a "web based project."
@@ -76,7 +76,7 @@ What are we actually building for v1:
 - (d) internal admin UI on top of a framework's admin (e.g. Django admin)?
 **[suggest: c or d for an internal tool — fastest path to a usable system]**
 
-## Answer:
+#### Answer:
 (b) API backend + separate web frontend
 Architecture:
 Next.js Web App → FastAPI API → PostgreSQL
@@ -85,13 +85,13 @@ Next.js Web App → FastAPI API → PostgreSQL
 **[suggest: Django if we want batteries‑included admin/auth/ORM; FastAPI +
 SQLModel if we want an API‑first service]**
 
-## Answer:
+#### Answer:
 FastAPI
 
 1.3 If there's a frontend (1.1b/1.1c), any framework/styling preference
 (React, HTMX, plain templates, Tailwind, Bootstrap)?
 
-## Answer:
+#### Answer:
 Use:
 - Next.js
 - React
@@ -111,24 +111,24 @@ UI requirements:
 1.4 Database engine? (PostgreSQL, SQLite, MySQL, MongoDB)
 **[suggest: PostgreSQL for prod, SQLite for local dev]**
 
-## Answer:
+#### Answer:
 PostgreSQL for both development and production.
 
 1.5 Where will this be deployed / hosted? (local machine, a VPS, a PaaS like
 Render/Railway/Fly, cloud, on‑prem at the outlet)
 
-## Answer:
+#### Answer:
 I want to host it using AWS 
 
 1.6 Is the in‑memory `tools.py` code meant to be kept/extended, or replaced with
 a proper persistence layer? **[suggest: replace]**
 
-## Answer:
+#### Answer:
 Replace it with a proper persistence layer.
 
 1.7 Do you want automated tests from the start? Which framework — `pytest`?
 
-## Answer:
+#### Answer:
 Yes.
 Use:
 pytest
@@ -142,19 +142,19 @@ Tests should start with:
 
 ---
 
-## 2. Users, roles & authentication
+# 2. Users, roles & authentication
 
 2.1 Who uses this system — only internal staff, or do customers log in too?
 **[suggest: internal staff only for v1]**
 
-## Answer:
+#### Answer:
 Internal staff only for v1.
 
 
 2.2 What roles exist? e.g. Admin (manage packages, users, pricing) vs Staff
 (manage customers, record deliveries/payments). Or is everyone equal for v1?
 
-## Answer:
+#### Answer:
 Use two roles initially:
 ADMIN
 Can manage everything.
@@ -175,7 +175,7 @@ adjustments]**
 
 ---
 
-## 3. Customer
+# 3. Customer
 
 3.1 `customer_id` — system‑generated (e.g. `CUST-00001`) or entered by staff?
 Any required format?
@@ -201,7 +201,7 @@ Do you need to record allergies separately?
 
 ---
 
-## 4. Packages
+# 4. Packages
 
 4.1 `package_id` — system‑generated or manual?
 
@@ -229,7 +229,7 @@ status = ACTIVE?
 
 ---
 
-## 5. Subscriptions
+# 5. Subscriptions
 
 5.1 Can a customer have **more than one ACTIVE subscription at the same time**, or
 strictly one at a time? **[suggest: one active at a time for v1]**
@@ -274,7 +274,7 @@ bad meal, correcting a mistake)? If yes, should it require a reason + be audited
 
 ---
 
-## 6. Deliveries & meal consumption
+# 6. Deliveries & meal consumption
 
 6.1 **Delivery frequency** is mentioned repeatedly but never defined. How is it
 expressed per customer/subscription — e.g. "1 meal/day", "2 meals/day",
@@ -318,7 +318,7 @@ daily list? **[suggest: just the daily list for v1]**
 
 ---
 
-## 7. Payments
+# 7. Payments
 
 7.1 Is a payment tied to a **subscription** (one subscription → its payments)?
 Confirm.
@@ -350,7 +350,7 @@ Who can issue a refund? Do you need to store refund amount + date + reason?
 
 ---
 
-## 8. Renewals / resubscription
+# 8. Renewals / resubscription
 
 8.1 A renewal creates a **new** subscription record linked to the customer and
 increments `resubscribe_number` — confirm (vs. resetting the same record).
@@ -369,7 +369,7 @@ renewal? **[suggest: no]**
 
 ---
 
-## 9. Monitoring, dashboards & reporting (v1)
+# 9. Monitoring, dashboards & reporting (v1)
 
 9.1 "Subscriptions approaching expiry" — define the threshold: X days before
 expiry (what X?), or Y meals remaining (what Y?), or both?
@@ -391,7 +391,7 @@ dues total, expiring this week)? **[suggest: yes, small and simple]**
 
 ---
 
-## 10. Non‑functional & operational
+# 10. Non‑functional & operational
 
 10.1 Expected scale: how many customers total (now / in 1 year)? Deliveries per
 day?
@@ -418,7 +418,7 @@ list?
 
 ---
 
-## 11. Anything else
+# 11. Anything else
 
 11.1 Is there an existing spreadsheet/tool this replaces? Can you share its
 columns — it's the fastest way to catch missing fields.
