@@ -18,25 +18,50 @@ I've grouped questions by area. Section **0** lists contradictions in the curren
 `subscription_status`, `resubscribe_number`). But `resubscribe_number` and the
 "Renewed subscriptions" monitoring imply a customer can have **many**
 subscriptions over time. Do you want:
-- (a) a normalized model — `Customer` 1‑to‑many `Subscription`, and the
-  subscription fields live on the subscription, not the customer, **[suggest: a]**
-- (b) one customer = one current subscription, history kept as separate snapshots?
+
+## Answer:
+Use a normalized model:
+Customer 1 → Many Subscriptions
+Customer information stays on the customer record. Package, meal balance, payment status, subscription dates, and subscription status belong to the subscription. This also allows full renewal history.
+
 
 0.2 `BL-04` says a user can delete a customer, but `BL-17` requires historical
 subscription records to stay intact. If a customer with past subscriptions is
 deleted, what should happen — block it, soft‑delete (hide but keep records), or
-hard‑delete and cascade everything? **[suggest: soft delete]**
+hard‑delete and cascade everything?
+
+## Answer:
+Use soft delete.
+Deleting a customer should hide/deactivate them from normal operations but retain all historical subscriptions, deliveries, and payments.
 
 0.3 `BL-07` and `BL-12` are identical ("Meals Remaining = Total Allocated −
 Consumed"). Confirm that's just a duplicate and there's no second rule intended.
 
+## Answer:
+Yes. Treat this as a duplicate rule. Keep only:
+Meals Remaining = Total Meals Allocated - Meals Consumed
+
 0.4 Section 1 customer fields list `customer_phoneNo` but not email; `BL-01` makes
 **email** mandatory. Which contact fields are truly required vs optional?
+
+## Answer:
+Required:
+- Name
+- Phone number
+- Delivery address
+Optional:
+- Email
+Email should not be mandatory for v1.
+
 
 0.5 The outlet is closed Tuesdays and no meals are delivered then, but validity is
 described in **calendar days** ("start_date + validity_days"). Do Tuesdays (and
 any holidays) count toward the validity window, or should expiry be extended to
 skip non‑delivery days? See Q4.3.
+
+## Answer:
+Use calendar-day validity.
+Tuesdays and holidays still count toward package validity. A closed delivery day should not automatically extend the subscription.
 
 ---
 
@@ -51,12 +76,23 @@ What are we actually building for v1:
 - (d) internal admin UI on top of a framework's admin (e.g. Django admin)?
 **[suggest: c or d for an internal tool — fastest path to a usable system]**
 
+## Answer:
+(b) API backend + separate web frontend
+Architecture:
+Next.js Web App → FastAPI API → PostgreSQL
+
 1.2 Backend framework preference? (FastAPI, Django, Flask, other)
 **[suggest: Django if we want batteries‑included admin/auth/ORM; FastAPI +
 SQLModel if we want an API‑first service]**
 
+## Answer:
+FastAPI
+
 1.3 If there's a frontend (1.1b/1.1c), any framework/styling preference
 (React, HTMX, plain templates, Tailwind, Bootstrap)?
+
+## Answer:
+
 
 1.4 Database engine? (PostgreSQL, SQLite, MySQL, MongoDB)
 **[suggest: PostgreSQL for prod, SQLite for local dev]**
