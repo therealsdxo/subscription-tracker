@@ -76,6 +76,13 @@ async def db_session(_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         await conn.close()
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    from app.core.ratelimit import login_limiter
+
+    login_limiter.reset()
+
+
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     async def _override_get_session() -> AsyncIterator[AsyncSession]:

@@ -62,6 +62,15 @@ class PermissionError(AppError):  # noqa: A001 - deliberate domain name
     code = "FORBIDDEN"
 
 
+class RateLimitError(AppError):
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "RATE_LIMITED"
+
+    def __init__(self, message: str, *, retry_after: int) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
 def _envelope(
     code: str,
     message: str,
@@ -78,9 +87,13 @@ def _envelope(
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+        headers: dict[str, str] | None = None
+        if isinstance(exc, RateLimitError):
+            headers = {"Retry-After": str(exc.retry_after)}
         return JSONResponse(
             status_code=exc.status_code,
             content=_envelope(exc.code, exc.message, details=exc.details),
+            headers=headers,
         )
 
     @app.exception_handler(RequestValidationError)

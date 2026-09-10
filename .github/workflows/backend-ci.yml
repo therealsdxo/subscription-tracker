@@ -3,17 +3,22 @@ name: backend-ci
 on:
   push:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+    paths:
+      - "backend/**"
+      - "infra/**"
+      - ".github/workflows/backend-ci.yml"
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
-
-defaults:
-  run:
-    working-directory: backend
+    paths:
+      - "backend/**"
+      - "infra/**"
+      - ".github/workflows/backend-ci.yml"
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     services:
       postgres:
@@ -63,3 +68,23 @@ jobs:
 
       - name: Pytest
         run: uv run pytest -q
+
+      - name: Docker build
+        run: docker build -t healthx-api:ci .
+
+  infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.1"
+      - name: Format
+        run: terraform fmt -check -recursive
+      - name: Validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate -no-color
