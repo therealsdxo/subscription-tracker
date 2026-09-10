@@ -121,6 +121,66 @@
       record open items at the end of this file.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — Milestone 5 complete (2026-09-10)
+
+Delivered on branch `feat-payments`:
+
+- **Enums**: `PaymentMethod` (CASH/UPI/CARD/BANK_TRANSFER/OTHER), `PaymentStatus`
+  (UNPAID/PARTIALLY_PAID/PAID/REFUNDED — derived, never stored).
+- **Migration `0005_payments`**: `payments` (`amount > 0` check, method, date,
+  reference, no status column) and `refunds` (mandatory `reason`). up/down/up
+  clean.
+- **`payment_service`**:
+  - `summary(sub)` / `summaries_for(subs)` (batched, no N+1) →
+    `total_paid` / `total_refunded` / `net_paid` /
+    `outstanding_amount = max(final_price - net_paid, 0)` / `payment_status`
+    cascade / `suggested_refund = final_price * meals_remaining /
+    meals_allocated` (guidance only).
+  - `record_payment` (STAFF, any subscription status, no future-dating).
+  - `issue_refund` (ADMIN, mandatory reason; **422 `REFUND_EXCEEDS_PAID`** if
+    `amount > net_paid`; no auto-proration).
+  - `payments_view` / `list_payments` / `get_payment`.
+- **`payment_repo`**: `totals`, `totals_for_many`, `outstanding_expr()`
+  (correlated predicate for the `dues` filter), `list_payments`.
+- **`app/api/v1/presenters.py`** — enriches `SubscriptionOut` /
+  `SubscriptionDetail` with the payment fields; all subscription responses
+  (and `CustomerDetail.subscriptions.current`) now carry `payment_status`,
+  `total_paid`, `net_paid`, `outstanding_amount`, `suggested_refund`.
+- **`GET /subscriptions?dues=true`** — outstanding-balance filter (correlated
+  subquery), combinable with `status` / `customer_id`.
+- **Endpoints**: `POST/GET /subscriptions/{id}/payments`,
+  `POST/GET /subscriptions/{id}/refunds`, `GET /payments` (filters),
+  `GET /payments/{id}`.
+- Tests: `test_payments.py` (12) — UNPAID/PARTIALLY_PAID/PAID/overpay,
+  REFUNDED + `net_paid`, refund guard, payment on a CANCELLED subscription,
+  RBAC (STAFF pays, cannot refund), `dues=true`, `suggested_refund`,
+  lookup endpoints, future-date rejection, customer-detail payment status,
+  audit rows. **89 pass** total.
+- `backend/README.md` updated.
+
+Verified locally: ruff, mypy(strict), `alembic upgrade head` /
+`downgrade base` / re-upgrade, 89/89 pytest, and a live run: UNPAID (6500 out)
+→ 2500 (PARTIALLY_PAID, 4000 out) → 4000 (PAID, 0 out) → refund 1000
+(REFUNDED, net 5500, 1000 out) → payments-view (2 payments, 1 refund) →
+`dues=true` (1).
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **PDF / printable invoices & receipts** (Q7.7) — not built; a plain payment
+  record view (`GET /subscriptions/{id}/payments`) is the v1 substitute.
+- **GST / automatic tax** (Q7.8) — the `base_price` / `tax_amount` /
+  `final_price` snapshot fields exist and are entered on the package; nothing
+  computes tax.
+- **Dashboard `outstanding_dues_total`** — Milestone 6.
+- **Payments / refunds have no edit or void path** — a mistaken payment is
+  corrected by an offsetting refund (or vice versa). An `is_void` / correction
+  workflow could be added if the outlet needs it.
+- **`payment_date` may be back-dated freely** (late entry) but not future-dated;
+  no lower bound. Fine for v1.
+- **`suggested_refund`** uses `meals_remaining / meals_allocated`, i.e. it
+  ignores `meals_adjustment` sign vs. consumption nuance and any pause credit —
+  it is explicitly a hint, not a policy.
+- **Refund `amount > net_paid` guard** is evaluated at issue time; concurrent
+  refunds on the same subscription are not serialised with a row lock (rare at
+  v1 scale — one admin, one subscription). Add `SELECT … FOR UPDATE` on the
+  subscription in `issue_refund` if it matters.
