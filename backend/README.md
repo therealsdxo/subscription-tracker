@@ -57,9 +57,12 @@ Roles: `ADMIN`, `STAFF`. `/api/v1/users/*` is ADMIN-only (see `tech_doc.md` §5.
 | Customers | `GET /customers` (`?q= &phone= &code= &is_active=`), `POST /customers`, `GET /customers/{id}`, `PATCH /customers/{id}` | STAFF |
 | | `POST /customers/{id}/deactivate` · `/reactivate` | ADMIN |
 | Addresses | `GET/POST /customers/{id}/addresses`, `PATCH/DELETE /customers/{id}/addresses/{aid}` | STAFF |
-| Subscriptions | `GET /subscriptions` (`?status= &customer_id= &expiring=`), `POST /subscriptions`, `GET /subscriptions/{id}`, `PATCH /subscriptions/{id}`, `GET /subscriptions/{id}/events` | STAFF |
-| | `POST /subscriptions/{id}/pause` · `/resume` · `/renew` | STAFF |
+| Subscriptions | `GET /subscriptions` (`?status= &customer_id= &expiring=`), `POST /subscriptions`, `GET /subscriptions/{id}`, `PATCH /subscriptions/{id}`, `GET /subscriptions/{id}/events` · `/deliveries` · `/skips` | STAFF |
+| | `POST /subscriptions/{id}/pause` · `/resume` · `/renew` · `/skips`, `DELETE .../skips/{id}` | STAFF |
 | | `POST /subscriptions/{id}/extend` · `/cancel` · `/meal-adjustments` | ADMIN |
+| Deliveries | `GET /deliveries?date=` (`&status= &area= &time_slot= &subscription_id=`), `POST /deliveries/generate`, `PATCH /deliveries/{id}`, `POST /deliveries/{id}/reverse` | STAFF |
+| Holidays | `GET /holidays` (`?start= &end=`) | STAFF |
+| | `POST /holidays`, `DELETE /holidays/{id}` | ADMIN |
 
 Packages compute `final_price = base_price + tax_amount` and are assigned a
 `PKG-#####` code; customers get a `CUST-######` code (prefix/width from the
@@ -78,6 +81,14 @@ sweep keeps it fresh:
 ```bash
 uv run python -m scripts.run_expiry_job   # activate due PENDING, expire overdue
 ```
+
+**Deliveries** are generated per day from due `ACTIVE` subscriptions
+(`POST /deliveries/generate {date}`, idempotent). Nothing is generated on the
+weekly closed day (`closed_weekday` setting, default Tuesday) or a `holidays`
+date. Recording a `DELIVERED` outcome decrements `meals_consumed` (auto-
+`COMPLETED` at zero) under a row lock; `POST /deliveries/{id}/reverse` restores
+the exact amount and re-opens the delivery. Adding a holiday or a planned skip
+cancels deliveries already scheduled for those dates.
 
 ## Migrations
 
@@ -110,15 +121,14 @@ app/
   core/              config, db session, security, logging, middleware, errors, deps
   models/            SQLAlchemy models (users, settings, audit_logs, packages,
                      customers/addresses, subscriptions/events/meal_adjustments,
-                     code sequences)
+                     deliveries/planned_skips/holidays, code sequences)
   schemas/           Pydantic request/response models
   api/v1/routers/    HTTP endpoints (health, auth, users, packages, customers,
-                     subscriptions)
-  workers/           expiry_job — daily activate/expire sweep
+                     subscriptions, deliveries, holidays)
   services/          business rules (transactional)
   repositories/      query helpers
-  workers/           scheduled jobs (later phases)
+  workers/           expiry_job — daily activate/expire sweep
 alembic/             migrations
-scripts/seed.py      idempotent seed
+scripts/             seed.py, run_expiry_job.py
 tests/               pytest
 ```

@@ -137,6 +137,23 @@ async def overdue(session: AsyncSession, *, on_date: date) -> list[Subscription]
     return list((await session.execute(stmt)).scalars().all())
 
 
+async def active_in_window(
+    session: AsyncSession, *, on_date: date
+) -> list[Subscription]:
+    """ACTIVE subscriptions eligible for a delivery on ``on_date`` (tech_doc §6.1)."""
+    stmt = (
+        select(Subscription)
+        .where(
+            Subscription.status == SubscriptionStatus.ACTIVE,
+            Subscription.start_date <= on_date,
+            Subscription.expected_end_date >= on_date,
+            Subscription.meals_remaining > 0,
+        )
+        .order_by(Subscription.id)
+    )
+    return list((await session.execute(stmt)).scalars().all())
+
+
 def _search_stmt(
     *,
     status: SubscriptionStatus | None,
