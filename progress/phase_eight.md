@@ -114,6 +114,72 @@
       is **out of scope** — note it as a follow-up alongside `infra/`.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — frontend scaffold complete (2026-09-10)
+
+Delivered on branch `feat-frontend-scaffold`, in `frontend/`.
+
+- **Stack**: Next.js 15 (App Router, TS strict), React 19, **Tailwind v4**,
+  **pnpm 9**. TanStack Query, react-hook-form + **zod 4**
+  (`z.email`, `<form noValidate>`), Radix `label`/`slot`/`dialog`/`dropdown`,
+  `openapi-fetch` + `openapi-typescript` (`lib/api/schema.d.ts` generated from
+  the backend OpenAPI — 47 paths), Vitest + RTL, ESLint + Prettier.
+- **Design tokens** (`app/globals.css` `@theme`): `--color-bg` off-white,
+  `--color-surface` white, near-black text + one dark-slate accent, `--radius`
+  5px, 1px `--color-border`. Consumed as Tailwind utilities. No gradients /
+  glass / oversized cards / charts.
+- **Auth without browser tokens**:
+  - `app/api/auth/{login,logout,refresh}/route.ts` set/clear **httpOnly Secure
+    SameSite=Lax** cookies (`hx_access`, `hx_refresh`); login body is `{ok:true}`.
+  - `app/api/v1/[...path]/route.ts` — catch-all proxy; attaches the access
+    token, refreshes + retries once on 401, clears cookies + 401 on failure.
+  - `middleware.ts` — redirect to `/login?next=…` when no `hx_refresh`; bounce
+    a logged-in user off `/login`.
+  - Verified live: cookies are httpOnly, nothing in `localStorage`, no token in
+    any client-visible response.
+- **App shell** (`components/app-shell/`): sidebar (7 nav items) + topbar with
+  the current user + logout; collapses to a drawer on mobile. Placeholder page
+  for every nav item so links don't 404.
+- **Reference screens** wired to the real API:
+  - `(app)/dashboard` — `GET /api/v1/dashboard/summary`, five plain stat tiles.
+  - `(app)/customers` — `GET /api/v1/customers` with search, `is_active`
+    filter, dense `<Table>`, `<Pagination>`; row → `/customers/[id]`.
+- **UI kit** (`components/ui/`): Button, Input, Field, Table, Pagination,
+  Spinner, PageHeader, EmptyState, ErrorState, StatusPill, Placeholder.
+- **Tests** (`test/`, 7): login (validation / redirect / 429 message),
+  dashboard tiles (values + error state), customers table (rows + pagination +
+  search → query).
+- **CI**: `.github/workflows/frontend-ci.yml` — pnpm install (frozen) → lint →
+  build → typecheck → test; triggers on `frontend/**`.
+- **Backend fix carried in this branch**: `Settings.cors_origins` was
+  `list[str]` and pydantic-settings JSON-parsed the env value, crashing on a
+  plain comma-separated `HEALTHX_CORS_ORIGINS`. Added `NoDecode`. (The frontend
+  doesn't use CORS — it proxies same-origin — but the M6 Terraform passes a
+  plain string, so this would have broken the deploy.)
+
+Verified locally: `pnpm lint` / `typecheck` / `test` / `build` green; live run
+against the backend — login → httpOnly cookies → dashboard numbers → customer
+search → logout → middleware redirect.
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **The other ~13 screens** (`tech_doc.md` §9.2) — packages, subscriptions,
+  deliveries, payments, settings, all the detail/create forms. Each follows the
+  Customers list / login form patterns.
+- **CSV export/import UI** — download buttons and the import wizard are not
+  built; the API endpoints exist.
+- **Frontend hosting infra** — Amplify Hosting or S3+CloudFront (or ECS + an
+  ALB path rule sharing the API's domain). Not in `infra/` yet.
+- **Toasts for mutation errors/warnings** — Radix Toast is installed and the
+  error-envelope mapper exists (`errorMessage`), but no global toaster is
+  mounted (no mutations in the scaffold yet).
+- **Refresh-token rotation & the proxy**: the proxy retries once on 401 and
+  writes rotated cookies onto that response. A burst of parallel requests that
+  all 401 at once will each try to refresh; the last write wins. Fine at v1
+  concurrency; a single-flight refresh lock is the tidy fix.
+- **Playwright E2E** — skipped this phase; Vitest covers the components.
+- **`next-env.d.ts`** is committed (without the `.next/types/routes.d.ts`
+  triple-slash ref) so CI can typecheck before the build; `next build`
+  re-adds that line locally — a harmless 1-line diff.
+- **pnpm version**: pinned to `pnpm@9.15.4` (`packageManager`). pnpm 12 (what
+  corepack pulls as "latest") hard-errors on any ignored dependency build
+  script even with an allowlist.

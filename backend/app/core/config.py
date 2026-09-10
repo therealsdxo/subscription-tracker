@@ -6,10 +6,10 @@ All variables are prefixed ``HEALTHX_`` (see ``.env.example``).
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 Environment = Literal["local", "ci", "dev", "prod"]
 
@@ -26,7 +26,12 @@ class Settings(BaseSettings):
     env: Environment = "local"
     log_level: str = "INFO"
     timezone: str = "Asia/Kolkata"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # ``NoDecode`` so a plain comma-separated env value is not JSON-parsed;
+    # the validator below splits it. (The frontend talks to the API through a
+    # same-origin server proxy, so CORS only matters for direct API clients.)
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     # Database URL (psycopg 3 driver, e.g. postgresql+psycopg://user:pass@host/db).
     # Used as-is by the async API engine and by Alembic's sync engine.
