@@ -1,0 +1,65 @@
+name: backend-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+  pull_request:
+    paths: ["backend/**", ".github/workflows/backend-ci.yml"]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: healthx
+          POSTGRES_PASSWORD: healthx
+          POSTGRES_DB: healthx_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U healthx -d healthx_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      HEALTHX_ENV: ci
+      HEALTHX_JWT_SECRET: ci-secret-not-for-production
+      HEALTHX_DATABASE_URL: postgresql+psycopg://healthx:healthx@localhost:5433/healthx_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.5"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: mypy
+        run: uv run mypy app scripts
+
+      - name: Alembic upgrade / downgrade
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+      - name: Pytest
+        run: uv run pytest -q

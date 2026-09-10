@@ -1,0 +1,40 @@
+# Local development dependencies. The API itself runs on the host via uv.
+#
+#   docker compose up -d
+#
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: healthx
+      POSTGRES_PASSWORD: healthx
+      POSTGRES_DB: healthx
+    ports:
+      - "5432:5432"
+    volumes:
+      - healthx_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthx -d healthx"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Separate database used by the test suite (schema is created/dropped per run).
+  db_test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: healthx
+      POSTGRES_PASSWORD: healthx
+      POSTGRES_DB: healthx_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthx -d healthx_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  healthx_pgdata:
