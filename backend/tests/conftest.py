@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 # Sequences are non-transactional, so each test resets them for stable codes.
-_CODE_SEQUENCES = ("customer_code_seq", "package_code_seq")
+_CODE_SEQUENCES = ("customer_code_seq", "package_code_seq", "subscription_code_seq")
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.db import get_session  # noqa: E402

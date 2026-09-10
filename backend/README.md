@@ -57,12 +57,27 @@ Roles: `ADMIN`, `STAFF`. `/api/v1/users/*` is ADMIN-only (see `tech_doc.md` §5.
 | Customers | `GET /customers` (`?q= &phone= &code= &is_active=`), `POST /customers`, `GET /customers/{id}`, `PATCH /customers/{id}` | STAFF |
 | | `POST /customers/{id}/deactivate` · `/reactivate` | ADMIN |
 | Addresses | `GET/POST /customers/{id}/addresses`, `PATCH/DELETE /customers/{id}/addresses/{aid}` | STAFF |
+| Subscriptions | `GET /subscriptions` (`?status= &customer_id= &expiring=`), `POST /subscriptions`, `GET /subscriptions/{id}`, `PATCH /subscriptions/{id}`, `GET /subscriptions/{id}/events` | STAFF |
+| | `POST /subscriptions/{id}/pause` · `/resume` · `/renew` | STAFF |
+| | `POST /subscriptions/{id}/extend` · `/cancel` · `/meal-adjustments` | ADMIN |
 
 Packages compute `final_price = base_price + tax_amount` and are assigned a
 `PKG-#####` code; customers get a `CUST-######` code (prefix/width from the
 `settings` table). Customer create requires ≥ 1 address; a possible-duplicate
 name returns `warnings[]` in the `{data, warnings}` envelope but still succeeds.
 Customers are only ever soft-deleted.
+
+**Subscriptions** snapshot the package (name/meals/validity/prices), the chosen
+delivery address, and the dietary preference at creation. `expected_end_date =
+start_date + validity_days` (calendar days). At most one `ACTIVE` subscription
+per customer — a second is queued `PENDING` and activates when the first ends.
+Pause→resume pushes the expiry out by the paused days; ADMIN extend / cancel /
+meal-adjust are audited. Status is stored but re-checked on read; a nightly
+sweep keeps it fresh:
+
+```bash
+uv run python -m scripts.run_expiry_job   # activate due PENDING, expire overdue
+```
 
 ## Migrations
 
@@ -94,9 +109,12 @@ app/
   main.py            FastAPI app factory
   core/              config, db session, security, logging, middleware, errors, deps
   models/            SQLAlchemy models (users, settings, audit_logs, packages,
-                     customers, customer_addresses, code sequences)
+                     customers/addresses, subscriptions/events/meal_adjustments,
+                     code sequences)
   schemas/           Pydantic request/response models
-  api/v1/routers/    HTTP endpoints (health, auth, users, packages, customers)
+  api/v1/routers/    HTTP endpoints (health, auth, users, packages, customers,
+                     subscriptions)
+  workers/           expiry_job — daily activate/expire sweep
   services/          business rules (transactional)
   repositories/      query helpers
   workers/           scheduled jobs (later phases)

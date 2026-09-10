@@ -164,6 +164,62 @@
       items at the end of this file.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — Milestone 3 complete (2026-09-10)
+
+Delivered on branch `feat-subscriptions`:
+
+- **M2 stubs closed**: `package_service.is_package_referenced()` now does an
+  `EXISTS` against `subscriptions` (used package → `DELETE` 409 `PACKAGE_IN_USE`,
+  tested); `INACTIVE` package rejected on subscription create (409
+  `PACKAGE_INACTIVE`); `CustomerDetail` carries a `subscriptions` summary
+  (`current` + `past_count`).
+- **Enums**: `SubscriptionStatus`, `DeliveryFrequency`, `TimeSlot`,
+  `SubscriptionEventType`.
+- **Migration `0003_subscriptions`**: `subscriptions` (all snapshot columns,
+  `meals_remaining` a persisted generated column, partial unique index
+  `status = 'ACTIVE'` per customer, check constraints), `subscription_events`
+  (immutable), `meal_adjustments`, `subscription_code_seq`. up/down/up clean.
+- **Service** (`subscription_service.py`): snapshot-on-create; calendar-day
+  expiry (`start_date + validity_days`); one-ACTIVE → PENDING queueing;
+  pause/resume (resume adds paused days to `expected_end_date`); ADMIN
+  extend (revives an EXPIRED sub) / cancel (activates the next PENDING);
+  ADMIN meal adjustments (blocks a negative balance; auto-COMPLETE at 0);
+  renew (new PENDING linked via `previous_subscription_id`, any ACTIVE package,
+  no meal carry-over); hybrid status recompute on read via `_sync_expiry`.
+- **Worker**: `app/workers/expiry_job.run_expiry_job()` + `scripts/run_expiry_job.py`.
+- **Endpoints**: list (`status` / `customer_id` / `expiring`), create, detail
+  (with events), restricted patch, pause/resume/extend/cancel/renew,
+  meal-adjustments, events. STAFF vs ADMIN per `tech_doc.md` §5.2.
+- **Audit** actions for every subscription transition + `MEAL_ADJUSTED`.
+- Tests: `test_subscriptions.py` (18) + `test_expiry_job.py` (1) — **58 pass**
+  total. `conftest` resets `subscription_code_seq` per test.
+- `backend/README.md` updated (endpoint table + expiry job).
+
+Verified locally: ruff, mypy(strict), `alembic upgrade head` /
+`downgrade base` / re-upgrade, 58/58 pytest, and a live run: create
+(`SUB-000001`, `original_end_date` 2026-10-21 for the 25-meal/50-day worked
+example) → adjust −5 → pause → resume → extend +10 (→ 2026-10-31) → renew
+(`SUB-000002` PENDING, prev 1) → events `[CREATED, ACTIVATED, PAUSED, RESUMED,
+EXTENDED]`.
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **Payments** (`payment_status`, `outstanding_amount`, dues list) — Milestone 5.
+  `SubscriptionOut` exposes `snapshot_final_price` only.
+- **Deliveries** — Milestone 4. `meals_consumed` is a real mutable column that
+  delivery recording will decrement; currently only meal adjustments move the
+  balance.
+- **List endpoint status freshness**: `GET /subscriptions` returns the *stored*
+  status (the nightly job / detail-GET self-heal it). A sub can briefly appear
+  `ACTIVE` in a list after its expiry date until the job runs.
+- **`custom_schedule` shape** is a free-form `jsonb` blob for now (only presence
+  is validated). Delivery generation in M4 will define its schema.
+- **`subscription_number`** is computed as `count(+1)` at create with no unique
+  constraint — a rare concurrent double-create could collide. Acceptable for v1
+  scale; revisit if it matters.
+- **Resume of an overdue pause**: resume adds the paused days, then `_sync_expiry`
+  runs — so resuming a long-paused sub whose (extended) expiry is still in the
+  past immediately re-expires it. Intended, but worth a UI note.
+- **`GET` side effects**: reads persist an `ACTIVE/PAUSED → EXPIRED` transition
+  (+ event + audit) via the committing request session — deliberate per the
+  hybrid model (`tech_doc.md` §4.5 BR-24).

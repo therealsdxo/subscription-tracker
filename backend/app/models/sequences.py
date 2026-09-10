@@ -12,4 +12,6 @@ from app.models.base import Base
 
 customer_code_seq = Sequence("customer_code_seq", start=1, metadata=Base.metadata)
 package_code_seq = Sequence("package_code_seq", start=1, metadata=Base.metadata)
-# subscription_code_seq is added in Milestone 3 alongside the subscriptions table.
+subscription_code_seq = Sequence(
+    "subscription_code_seq", start=1, metadata=Base.metadata
+)
