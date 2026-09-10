@@ -16,11 +16,15 @@ os.environ.setdefault("HEALTHX_ENV", "ci")
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncEngine,
     AsyncSession,
     create_async_engine,
 )
+
+# Sequences are non-transactional, so each test resets them for stable codes.
+_CODE_SEQUENCES = ("customer_code_seq", "package_code_seq")
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.db import get_session  # noqa: E402
@@ -39,6 +43,10 @@ async def _engine() -> AsyncIterator[AsyncEngine]:
     )
     async with engine.begin() as conn:
         await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS citext")
+        # Drop any leftover Alembic marker so a prior `alembic` run against this
+        # database can't confuse a later one (the suite builds schema from
+        # metadata, not migrations).
+        await conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield engine
@@ -49,6 +57,10 @@ async def _engine() -> AsyncIterator[AsyncEngine]:
 
 @pytest_asyncio.fixture
 async def db_session(_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    async with _engine.begin() as setup:
+        for seq in _CODE_SEQUENCES:
+            await setup.execute(text(f"ALTER SEQUENCE {seq} RESTART WITH 1"))
+
     conn = await _engine.connect()
     trans = await conn.begin()
     session = AsyncSession(
