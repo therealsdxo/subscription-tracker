@@ -11,8 +11,8 @@ deliveries, and payments.
 | `project.md` | Original project brief |
 | `progress/` | Planning docs — questionnaire, `tech_doc.md` (v1 technical design), phase plans |
 | `backend/` | FastAPI + PostgreSQL API service (see `backend/README.md`) |
+| `frontend/` | Next.js staff UI — scaffold (see `frontend/README.md`) |
 | `infra/` | Terraform for the AWS deployment (see `infra/README.md`) |
-| `frontend/` | Next.js web app *(not started)* |
 
 ## Status
 
@@ -25,7 +25,10 @@ Backend **v1 complete** (Milestones 1–6, `progress/tech_doc.md` §16):
 - **M5** Payments — installments, derived `payment_status` / `outstanding_amount`, refunds, dues filter
 - **M6** Dashboard summary, CSV export, CSV customer import, login rate-limiting, `Dockerfile`, `infra/` Terraform (AWS)
 
-The Next.js frontend is not started.
+**Frontend scaffold** (`progress/phase_eight.md`): Next.js 15 + Tailwind v4,
+httpOnly-cookie auth via a server proxy, the design system, an app shell, and
+two reference screens (Login, Dashboard, Customers list) wired to the API. The
+other screens and frontend hosting are follow-ups.
 
 ## Quick start (backend)
 
