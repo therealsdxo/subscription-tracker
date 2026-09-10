@@ -32,6 +32,14 @@ class Page(BaseModel, Generic[T]):
     page_size: int
 
 
+class DataWithWarnings(BaseModel, Generic[T]):
+    """Success envelope for mutations that may surface non-blocking warnings
+    (e.g. a possible-duplicate customer). ``tech_doc.md`` §8."""
+
+    data: T
+    warnings: list[Warning] = Field(default_factory=list)
+
+
 class HealthStatus(BaseModel):
     status: str
     version: str

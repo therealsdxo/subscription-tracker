@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 # Stable constraint naming so Alembic migrations are deterministic.
 NAMING_CONVENTION = {
@@ -27,9 +31,11 @@ class TimestampMixin:
         server_default=func.now(),
         nullable=False,
     )
+    # Python-side onupdate so the new value is available without a post-flush
+    # refetch (which would trigger lazy IO under the async engine).
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=_utcnow,
         nullable=False,
     )

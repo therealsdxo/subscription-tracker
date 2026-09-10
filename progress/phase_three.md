@@ -121,6 +121,63 @@
       of this file.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — Milestone 2 complete (2026-09-10)
+
+Delivered on branch `feat-customers-packages`:
+
+- **Code generator** (`app/services/code_service.py`): per-entity Postgres
+  sequence (`customer_code_seq`, `package_code_seq`) + prefix/width from
+  `settings` → `CUST-000001` / `PKG-00001`. Sequences bound to metadata for tests
+  and created by the migration for real DBs.
+- **Packages**: `Package` model + enum `package_status`; migration
+  `0002_customers_and_packages`; check constraints for meals (1–500), validity
+  (1–730), non-negative prices; `final_price = base + tax` (computed on create
+  and every update). Endpoints list/get (STAFF) and create/patch/activate/
+  deactivate/delete (ADMIN). `delete` guarded by
+  `package_service.is_package_referenced()` — returns `False` now, M3 fills the
+  body. Audit: `PACKAGE_CREATED/UPDATED/ACTIVATED/DEACTIVATED/DELETED`.
+- **Customers**: `Customer` + `CustomerAddress` models, enum `dietary_pref`;
+  `citext` unique email, unique phone (normalised: spaces/dashes/parens
+  stripped), soft-delete only (no hard-delete endpoint), separate `allergies`
+  field. Endpoints: search (`q`/`phone`/`code`/`is_active`, paginated), create
+  (requires ≥ 1 address), detail (with addresses), patch, deactivate/reactivate
+  (ADMIN, reason required on deactivate). Duplicate-name → `POSSIBLE_DUPLICATE`
+  warning in the `{data, warnings}` envelope, still 201. Audit:
+  `CUSTOMER_CREATED/UPDATED/DEACTIVATED/REACTIVATED` +
+  `CUSTOMER_ADDRESS_ADDED/UPDATED/REMOVED`.
+- **Addresses**: structured fields; exactly one primary per customer (partial
+  unique index + two-phase flush so it's never transiently violated); a customer
+  always keeps ≥ 1 active address (delete of the last one → 409 `LAST_ADDRESS`);
+  removing the primary promotes the next active address.
+- `DataWithWarnings[T]` success envelope added to `app/schemas/common.py`.
+- `TimestampMixin.updated_at` switched to a Python-side `onupdate` (avoids a
+  post-flush refetch / lazy IO under the async engine).
+- Tests: `test_packages.py`, `test_customers.py`, `test_code_service.py` —
+  **42 pass** total. `conftest` now restarts the code sequences per test
+  (sequences are non-transactional).
+- `backend/README.md` updated with the endpoint table.
+
+Verified locally: ruff, mypy(strict), `alembic upgrade head` /
+`downgrade base` / re-upgrade, 42/42 pytest, and a live run creating a package
+(`PKG-00001`, `final_price` 6825.00) and a customer (`CUST-000001`, normalised
+phone, duplicate-name warning).
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **`is_package_referenced()`** is a stub returning `False`. Milestone 3 must
+  replace the body with an `EXISTS` against `subscriptions` and add a test that
+  a used package cannot be deleted (only deactivated) — BR-6.
+- **Phone normalisation** is minimal (strips spaces/dashes/parens/dots; keeps a
+  leading `+` and country code). `+919000011111` and `9000011111` are treated as
+  different numbers. Revisit if staff routinely enter numbers without the
+  country code.
+- **Duplicate detection** matches on exact normalised name only
+  (case- and whitespace-insensitive). No fuzzy/trigram matching, no
+  phone-similarity check. `pg_trgm` is a candidate if false negatives matter.
+- **Address `RESTRICT` FK**: `customer_addresses.customer_id` is `ON DELETE
+  RESTRICT`, but customers are never hard-deleted, so this only matters if a
+  future admin tool bypasses the soft-delete path.
+- **`subscriptions` summary on customer detail** (`tech_doc.md` §8) is not in
+  `CustomerDetail` yet — added in Milestone 3.
+- **CSV import/export** for customers/packages (`tech_doc.md` §9.3, §10.7) is
+  Milestone 6, not this phase.
