@@ -505,40 +505,126 @@ expressed per customer/subscription — e.g. "1 meal/day", "2 meals/day",
 "specific weekdays", "every other day", "on-demand"? Give the exact set of
 options you want.
 
+#### Answer:
+For v1, allow:
+- Daily
+- Specific weekdays
+- Custom schedule
+Also store:
+meals_per_delivery
+This makes the system more flexible than assuming one meal per day forever.
+
 6.2 Is a "delivery" always exactly **one meal** (BL‑13), or can one delivery
 event cover multiple meals (e.g. deliver 2 meals in one drop)?
+
+#### Answer:
+A delivery may contain one or multiple meals.
+Example:
+Lunch + Dinner delivered together:
+meal_quantity = 2
+Then:
+meals_remaining -= 2
 
 6.3 How are deliveries recorded — staff manually mark each delivery day by day,
 a bulk "mark today's deliveries" screen, or an auto‑generated daily delivery
 list that staff then confirm/adjust? **[suggest: auto‑generate the day's
 expected deliveries, staff confirm/override]**
 
+#### Answer:
+HealthX automatically creates or displays the expected daily delivery list based on subscription schedules.
+Staff then marks each as:
+- Delivered
+- Skipped
+- Cancelled
+- Failed
+
 6.4 Delivery outcome values and who sets them: `DELIVERED`, `SKIPPED`,
 `CANCELLED`, `FAILED`, `NOT_DELIVERED` (from BL‑14). Any others (e.g.
 `RESCHEDULED`)? Which of these are customer‑requested vs operational?
 
+#### Answer:
+Use:
+- SCHEDULED
+- PREPARING
+- OUT_FOR_DELIVERY
+- DELIVERED
+- SKIPPED
+- CANCELLED
+- FAILED
+- RESCHEDULED
+
 6.5 Only `DELIVERED` decrements the meal balance — confirm. Skipped/failed/etc.
 never consume a meal and never extend expiry (unless manually done)?
 
+#### Answer;
+Yes.
+
 6.6 Can a recorded delivery be **edited or reversed** later (marked delivered by
 mistake)? Should that restore the meal? **[suggest: yes, with audit]**
+
+#### Answer:
+Yes.
+An authorized user can reverse an incorrectly completed delivery.
+The deducted meal quantity should be restored.
+Mandatory:
+- Reason
+- Audit log
 
 6.7 Should the system **block** creating/recording a delivery on a **Tuesday**?
 Are there other closed days / holidays, and do you need a holiday calendar you
 can maintain?
 
+#### Answer:
+Block normal delivery scheduling on Tuesday.
+Also create a maintainable:
+Business Closed Dates / Holiday Calendar
+This allows special holidays to be blocked without code changes.
+
 6.8 Can a delivery be recorded against an `EXPIRED`, `COMPLETED`, `PAUSED`, or
 `CANCELLED` subscription? **[suggest: no — hard block, this is a core problem the
 system exists to prevent]**
 
+#### Answer:
+Hard-block deliveries for:
+- EXPIRED
+- COMPLETED
+- PAUSED
+- CANCELLED
+
 6.9 Do customers request **skip days in advance** (e.g. "no meals next Thu–Fri"),
 and should the system store planned skips?
+
+#### Answer:
+Yes.
+Store planned customer skip dates.
+This is useful because meal subscription businesses frequently receive requests such as:
+Don't send meals Thursday and Friday.
 
 6.10 Do you need **delivery scheduling / route planning** in v1 (grouping by
 area, delivery sequence, driver assignment), or just per‑customer address + a
 daily list? **[suggest: just the daily list for v1]**
 
+#### Answer:
+Not required in v1.
+Use only:
+- Daily delivery list
+- Customer
+- Address
+- Area
+- Delivery slot
+- Instructions
+Route optimization can be added later.
+
 6.11 Delivery **time slots** (morning/evening) — track them?
+
+#### Answer;
+Yes.
+Store delivery time slots.
+Examples:
+- Morning
+- Lunch
+- Evening
+- Custom
 
 ---
 
@@ -547,30 +633,86 @@ daily list? **[suggest: just the daily list for v1]**
 7.1 Is a payment tied to a **subscription** (one subscription → its payments)?
 Confirm.
 
+#### Answer:
+Confirmed:
+Subscription 1 → Many Payments
+
 7.2 Can a subscription be paid in **multiple installments** (record several
 payments that sum to the package price), or always a single payment?
 **[suggest: support multiple — needed for PARTIALLY_PAID]**
+
+#### Answer:
+Yes.
+Allow multiple payment transactions.
 
 7.3 What determines `payment_status`:
 - `UNPAID` = 0 paid, `PARTIALLY_PAID` = 0 < paid < price, `PAID` = paid ≥ price,
   `REFUNDED` = money returned?
 Confirm this mapping and how `outstanding_amount` is derived.
 
+#### Answer:
+Use:
+total_paid = sum(successful payments)
+Then:
+- UNPAID → total_paid = 0
+- PARTIALLY_PAID → 0 < total_paid < package_price
+- PAID → total_paid >= package_price
+- REFUNDED → refund has been issued according to refund records
+Calculate:
+outstanding_amount = max(package_price - net_paid, 0)
+
 7.4 Do you record **payment method** (Cash / UPI / Card / Bank transfer) and a
 reference number?
+
+#### Answer:
+Yes.
+Options:
+- Cash
+- UPI
+- Card
+- Bank Transfer
+- Other
+Transaction/reference ID should be optional.
 
 7.5 Does an `UNPAID` or `PARTIALLY_PAID` status **block** activating the
 subscription or recording deliveries, or is delivery allowed regardless (payment
 tracked separately)? **[suggest: allow delivery, just flag the dues]**
 
+#### Answer:
+No.
+For v1, payment tracking should be independent from delivery eligibility.
+Display a clear outstanding-payment warning.
+
 7.6 **Refunds** — when a subscription is cancelled with meals remaining, is the
 refund: full, nothing, or pro‑rated (`price × meals_remaining / total_meals`)?
 Who can issue a refund? Do you need to store refund amount + date + reason?
 
+#### Answer:
+Do not automatically calculate a refund.
+Business cases vary too much.
+Admin enters:
+- Refund amount
+- Refund date
+- Refund reason
+- Payment method/reference
+Keep a calculated prorated amount available later as a recommendation, not an automatic business rule.
+
 7.7 Do you need **invoices / receipts** (PDF or printable) in v1?
 **[suggest: defer]**
 
+#### Answer:
+Defer full PDF invoice generation from v1.
+A printable basic payment record can be added later.
+
 7.8 Any taxes/GST to record on the package price?
+
+#### Answer:
+Store tax capability in the model, even if you don't initially use it.
+Possible fields:
+- Base price
+- Tax amount
+- Final price
+Do not hardcode GST percentages.
 
 ---
 
@@ -579,17 +721,45 @@ Who can issue a refund? Do you need to store refund amount + date + reason?
 8.1 A renewal creates a **new** subscription record linked to the customer and
 increments `resubscribe_number` — confirm (vs. resetting the same record).
 
+#### Answer: 
+Confirmed.
+A renewal creates a new subscription record.
+Do not reset the old one.
+
 8.2 Can a customer renew **before** the current subscription ends? If so, does the
 new subscription start immediately (stacking meals) or queue to start after the
 current one ends? **[suggest: queue to start at current expiry/completion]**
 
+#### Answer:
+Allow customers to renew before the current subscription ends.
+The new subscription should be:
+PENDING
+and start after the current subscription completes/expires.
+Do not combine meal balances.
+
 8.3 Can the renewal use a **different package** than the previous one?
+
+#### Answer:
+Yes.
+Customers may renew with any active package.
 
 8.4 Is `resubscribe_number` a per‑customer counter (1st, 2nd, 3rd subscription)?
 Does the very first subscription count as 0 or 1?
 
+#### Answer:
+recommend not storing resubscribe_number as mutable customer data.
+Instead derive:
+subscription_number = count(customer subscriptions)
+First subscription = 1
+Second subscription = 2
+Third subscription = 3
+
 8.5 Do you want to carry forward unused meals from the previous subscription on
 renewal? **[suggest: no]**
+
+#### Answer:
+No.
+Unused meals do not transfer to a new subscription unless an Admin explicitly creates a goodwill adjustment.
 
 ---
 
@@ -597,6 +767,16 @@ renewal? **[suggest: no]**
 
 9.1 "Subscriptions approaching expiry" — define the threshold: X days before
 expiry (what X?), or Y meals remaining (what Y?), or both?
+
+#### Answer:
+Use both:
+Time threshold
+- 7 days remaining
+and
+Meal threshold
+- 5 meals remaining
+A subscription can therefore appear as attention-required due to either condition.
+Make these thresholds configurable later.
 
 9.2 List the exact **screens/lists** you need in v1. My proposed minimum:
 - Customer list + search (by name, number, id)
@@ -608,10 +788,49 @@ expiry (what X?), or Y meals remaining (what Y?), or both?
 - Package management (create/edit/activate/deactivate)
 Add/remove anything.
 
+#### Answer:
+Keep all proposed screens:
+- Login
+- Dashboard
+- Customer list
+- Create customer
+- Customer details
+- Package list
+- Create/edit package
+- Subscription list
+- Subscription detail
+- Create subscription
+- Today's deliveries
+- Active subscriptions
+- Completed subscriptions
+- Expired subscriptions
+- Expiring soon
+- Dues/payments
+- User/settings area
+
 9.3 Do you need **CSV/Excel export** of any of these lists in v1?
+
+#### Answer:
+Yes.
+Support CSV export for:
+- Customers
+- Subscriptions
+- Payments
+- Daily deliveries
+Excel-specific formatting can come later.
 
 9.4 Any single "dashboard" with counts (active customers, meals to deliver today,
 dues total, expiring this week)? **[suggest: yes, small and simple]**
+
+#### Answer:
+Yes, but keep it intentionally minimal.
+Primary indicators:
+- Active subscriptions
+- Today's meals
+- Delivered today
+- Expiring soon
+- Outstanding dues
+No huge decorative cards or chart overload.
 
 ---
 
@@ -620,25 +839,97 @@ dues total, expiring this week)? **[suggest: yes, small and simple]**
 10.1 Expected scale: how many customers total (now / in 1 year)? Deliveries per
 day?
 
+#### Answer:
+Design v1 comfortably for:
+- Up to 10,000 customers
+- Thousands of subscription records
+- Approximately 1,000 deliveries/day
+The actual current usage can be much lower.
+
 10.2 Timezone — everything in IST (Asia/Kolkata)? Confirm.
 
+#### Answer:
+Confirmed:
+Asia/Kolkata
+
 10.3 Do you need **data backups** / is the hosting provider handling that?
+
+#### Answer:
+Yes.
+Production PostgreSQL must have:
+- Automated backups
+- Restore capability
+Prefer hosting providers that support managed backups.
 
 10.4 Primary device usage — desktop browser at the outlet, or also mobile/tablet
 for delivery staff in the field?
 
+#### Answer:
+Primary:
+- Desktop/laptop
+Secondary:
+- Tablets
+- Mobile phones
+The UI should therefore be responsive.
+
 10.5 Does the app need to work **offline** at all (spotty connectivity for
 delivery staff)? **[suggest: no for v1]**
 
+#### Answer:
+No offline mode for v1.
+Internet connection required.
+
 10.6 Any branding (name shown as "HealthX", logo, colors)?
+
+#### Answer:
+Name:
+HealthX
+Palette:
+- White
+- Off-white
+- Black
+- Slate
+Design direction:
+- Minimal
+- Professional
+- Restrained
+- Modern
+- Operational
+Explicitly avoid:
+- AI-slop appearance
+- Gradient-heavy designs
+- Glassmorphism
+- Purple/blue AI palettes
+- Giant cards
+- Excessive rounded elements
+- Decorative charts
+- Unnecessary animation
 
 10.7 Do you need **bulk import** of existing customers (from a spreadsheet) to
 get started?
+
+#### Answer:
+Yes.
+This is worth including because migrating existing customers manually would be unnecessarily painful.
+Support CSV import for:
+- Existing customers
+- Current subscription details where possible
+Imports should validate data before committing it.
 
 10.8 Explicitly **out of scope for v1** (please confirm): WhatsApp/SMS/email
 notifications, automated expiry alerts, payment reminders, customer‑facing
 portal, analytics/BI, route optimization. Anything to pull *into* v1 from this
 list?
+
+#### Answer:
+Keep out:
+- Customer portal
+- Route optimization
+- AI analytics
+- Churn prediction
+- Advanced BI
+I would, however, consider basic expiry alerts inside the dashboard part of v1.
+WhatsApp/SMS/email automation can remain v2.
 
 ---
 
@@ -647,6 +938,71 @@ list?
 11.1 Is there an existing spreadsheet/tool this replaces? Can you share its
 columns — it's the fastest way to catch missing fields.
 
+#### Answer:
+No such spreadsheet as of now 
+
 11.2 Any hard deadline or milestone for v1?
 
+#### Answer:
+Recommended milestone structure rather than forcing an arbitrary deadline:
+Milestone 1
+Database + authentication
+Milestone 2
+Customers + packages
+Milestone 3
+Subscriptions
+Milestone 4
+Daily delivery workflow
+Milestone 5
+Payments
+Milestone 6
+Dashboard + testing + deployment
+
 11.3 Any rule or edge case you already know is tricky that I haven't asked about?
+
+
+#### Answer:
+Yes. Explicitly account for these:
+- Customer pauses subscription.
+- Customer changes address mid-subscription.
+- Customer skips several days.
+- Meal was accidentally marked delivered.
+- Two staff members try to mark the same delivery simultaneously.
+- Subscription expires with meals remaining.
+- Customer renews before expiry.
+- Package changes after a customer purchased it.
+- Customer receives multiple meals in one delivery.
+- Package starts in the future.
+- Customer asks for goodwill meal credit.
+- Refund is issued.
+- Customer has outstanding payment but continues receiving meals.
+- Closed Tuesdays.
+- Special business holidays.
+- Customer record is deactivated but historical data remains.
+- Existing customer accidentally gets entered twice.
+These edge cases are exactly why database transactions, immutable subscription snapshots, audit logs, and clear business rules matter.
+The resulting v1 architecture
+With these decisions, HealthX becomes:
+Frontend
+Next.js + TypeScript + Tailwind
+↓
+REST API
+FastAPI + Pydantic
+↓
+Application Logic
+Services / Business Rules
+↓
+Persistence
+SQLAlchemy + Alembic
+↓
+Database
+PostgreSQL
+And the principal data model becomes:
+Customer
+↓ 1:N
+Subscription
+↓ 1:N → Delivery
+↓ 1:N → Payment
+↑ N:1
+Package
+This is the architecture I would lock in before writing the first production feature.
