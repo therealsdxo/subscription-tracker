@@ -11,14 +11,21 @@ deliveries, and payments.
 | `project.md` | Original project brief |
 | `progress/` | Planning docs — questionnaire, `tech_doc.md` (v1 technical design), phase plans |
 | `backend/` | FastAPI + PostgreSQL API service (see `backend/README.md`) |
-| `frontend/` | Next.js web app *(added in a later phase)* |
-| `infra/` | Terraform for AWS *(added in a later phase)* |
+| `infra/` | Terraform for the AWS deployment (see `infra/README.md`) |
+| `frontend/` | Next.js web app *(not started)* |
 
 ## Status
 
-Milestone 1 (Foundation) — backend scaffold: config, DB + Alembic, `users`,
-auth (login / refresh / RBAC), audit-log infrastructure, `settings`, health
-checks, CI. See `progress/tech_doc.md` §16 for the full roadmap.
+Backend **v1 complete** (Milestones 1–6, `progress/tech_doc.md` §16):
+
+- **M1** Foundation — config, DB + Alembic, users, auth (login/refresh/RBAC), audit log, settings, health, CI
+- **M2** Customers & packages — CRUD, soft delete, addresses, codes, bounds
+- **M3** Subscriptions — snapshot, calendar-day expiry, one-ACTIVE/PENDING, pause/resume/extend/cancel/renew, meal adjustments, expiry job
+- **M4** Deliveries — daily generation (Tuesday/holiday/skip aware), outcome recording with a row lock, reversal
+- **M5** Payments — installments, derived `payment_status` / `outstanding_amount`, refunds, dues filter
+- **M6** Dashboard summary, CSV export, CSV customer import, login rate-limiting, `Dockerfile`, `infra/` Terraform (AWS)
+
+The Next.js frontend is not started.
 
 ## Quick start (backend)
 

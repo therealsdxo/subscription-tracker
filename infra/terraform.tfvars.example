@@ -1,0 +1,21 @@
+region      = "ap-south-1"
+project     = "healthx"
+environment = "prod"
+
+# Deploy a specific image tag (push it to ECR first).
+api_image_tag = "latest"
+
+# The frontend origin(s) allowed to call the API.
+cors_origins = "https://app.example.com"
+
+# Optional: set to serve the API over HTTPS with an ACM cert. Leave "" to run
+# plain HTTP behind another TLS layer.
+domain_name = ""
+
+# Optional: get CloudWatch alarm notifications.
+alarm_email = ""
+
+# Cost / resilience toggles.
+db_multi_az            = false
+db_deletion_protection = true
+api_desired_count      = 1

@@ -44,6 +44,9 @@ curl -s localhost:8000/api/v1/auth/me -H 'authorization: Bearer <access_token>'
 ```
 
 Roles: `ADMIN`, `STAFF`. `/api/v1/users/*` is ADMIN-only (see `tech_doc.md` §5.2).
+`POST /auth/login` is rate-limited: 10 attempts / 5 min per IP and 8 / 5 min per
+account → `429` with `Retry-After`. The limiter is in-process (per task); a
+multi-task deployment needs a shared store.
 
 ## Endpoints
 
@@ -64,6 +67,9 @@ Roles: `ADMIN`, `STAFF`. `/api/v1/users/*` is ADMIN-only (see `tech_doc.md` §5.
 | Holidays | `GET /holidays` (`?start= &end=`) | STAFF |
 | | `POST /holidays`, `DELETE /holidays/{id}` | ADMIN |
 | Payments | `GET /payments` (`?subscription_id= &customer_id= &method= &date_from= &date_to=`), `GET /payments/{id}` | STAFF |
+| Dashboard | `GET /dashboard/summary` | STAFF |
+| Exports | `GET /exports/{customers,subscriptions,payments,deliveries}.csv` (`deliveries.csv?date=`) | STAFF |
+| Imports | `POST /imports/customers` (`?mode=validate\|commit`, multipart `file`) | ADMIN |
 
 Packages compute `final_price = base_price + tax_amount` and are assigned a
 `PKG-#####` code; customers get a `CUST-######` code (prefix/width from the
@@ -100,6 +106,29 @@ are ADMIN-only, require a reason, and cannot exceed the net amount paid; there i
 no automatic proration (`suggested_refund` is guidance only). Payment state
 never blocks activation or delivery recording. `GET /subscriptions?dues=true`
 lists subscriptions with an outstanding balance.
+
+**Dashboard** (`GET /dashboard/summary`) returns active subscriptions, today's
+planned meals, delivered-today, expiring-soon, and total outstanding dues — one
+service call of aggregate queries.
+
+**CSV export** streams `text/csv` with a download filename. **CSV import**
+(`POST /imports/customers`, ADMIN) is stateless: `mode=validate` returns a
+`{total, valid, invalid, errors[]}` report and writes nothing; `mode=commit`
+writes all rows in one transaction, or rejects the whole file (422) if any row
+has an error. Optional columns seed a subscription. See
+`docs/customers_import_template.csv`.
+
+## Container & scheduled jobs
+
+```bash
+docker build -t healthx-api ./backend
+uv run python -m scripts.run_expiry_job          # activate PENDING / expire overdue
+uv run python -m scripts.generate_deliveries     # tomorrow's delivery list (IST)
+uv run python -m scripts.generate_deliveries 2026-09-15
+```
+
+AWS deployment (VPC, RDS, ECS Fargate, EventBridge schedules for the jobs,
+CloudWatch alarms) lives in `../infra/` — see `infra/README.md`.
 
 ## Migrations
 

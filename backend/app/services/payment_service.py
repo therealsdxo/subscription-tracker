@@ -63,6 +63,24 @@ def _build_summary(
     )
 
 
+def compute_summary(
+    *,
+    final_price: Decimal,
+    meals_allocated: int,
+    meals_remaining: int,
+    total_paid: Decimal,
+    total_refunded: Decimal,
+) -> PaymentSummary:
+    """Public wrapper around the summary maths for other services (exports)."""
+    return _build_summary(
+        final_price=final_price,
+        meals_allocated=meals_allocated,
+        meals_remaining=meals_remaining,
+        total_paid=total_paid,
+        total_refunded=total_refunded,
+    )
+
+
 async def summary(session: AsyncSession, sub: Subscription) -> PaymentSummary:
     total_paid, total_refunded = await payment_repo.totals(session, sub.id)
     return _build_summary(

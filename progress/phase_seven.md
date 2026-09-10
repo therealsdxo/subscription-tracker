@@ -152,6 +152,68 @@
       end of this file.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — Milestone 6 complete (2026-09-10)
+
+Delivered on branch `feat-dashboard-deploy`. **No new DB migration.**
+
+- **`GET /dashboard/summary`** (`dashboard_service`) — active subs, today's
+  planned meals, delivered today, expiring-soon, `outstanding_dues_total` (one
+  call of aggregate queries, `func.greatest` for the dues sum).
+- **CSV export** — `GET /exports/{customers,subscriptions,payments,deliveries}.csv`
+  (`deliveries.csv?date=`). `export_service` yields rows via the request session;
+  the router joins them into a `text/csv` response with a download filename.
+  (Materialises in memory — fine at ≤ 10k rows; true chunked streaming needs a
+  session that outlives the handler.)
+- **CSV customer import** — `POST /imports/customers` (ADMIN, multipart,
+  `?mode=validate|commit`). Stateless: `validate` → `{total, valid, invalid,
+  errors[]}` and writes nothing; `commit` writes all rows in one transaction or
+  **rejects the whole file (422 `IMPORT_HAS_ERRORS`)** if any row is invalid.
+  In-file + DB phone/email dedup; optional subscription columns
+  (`package_code`, `start_date`, …). Template:
+  `backend/docs/customers_import_template.csv`. `audit CUSTOMERS_IMPORTED`.
+- **Login rate-limiting** (`app/core/ratelimit.py`) — sliding window, 10 / 5 min
+  per IP + 8 / 5 min per account → `429` + `Retry-After`. `RateLimitError`
+  (429) added; conftest resets the limiter per test.
+- **`scripts/generate_deliveries.py`** — generate a date's list (default:
+  tomorrow, IST).
+- **`backend/Dockerfile`** (multi-stage, uv, non-root, `$PORT`) +
+  `.dockerignore`.
+- **`infra/`** — Terraform for AWS `ap-south-1`: VPC (2 AZ, 1 NAT), RDS
+  PostgreSQL 16 (private, backups + PITR, Multi-AZ toggle), ECR, ECS Fargate
+  API service behind an ALB (health check `/api/v1/health`, HTTPS when
+  `domain_name` set), Secrets Manager (`database-url`, `jwt-secret`), a
+  `migrate` one-off task, EventBridge Scheduler for `run_expiry_job` +
+  `generate_deliveries`, CloudWatch alarms (ALB 5xx / latency, RDS CPU /
+  storage / connections). `terraform fmt`/`validate`-clean; **not applied**.
+  `infra/README.md` has the apply runbook.
+- **CI** — added `docker build` and a `terraform fmt -check` + `validate` job;
+  workflow now also triggers on `infra/**`.
+- Tests: `test_dashboard.py` (4), `test_exports.py` (5), `test_imports.py` (7),
+  `test_ratelimit.py` (3), `test_generate_deliveries_script.py` (1) —
+  **109 pass** total.
+- `backend/README.md`, root `README.md`, `infra/README.md` updated.
+
+Verified locally: ruff, mypy(strict), `alembic upgrade head` /
+`downgrade base` / re-upgrade, 109/109 pytest, `terraform validate` (Terraform
+1.16.1). `docker build` not run locally (no Docker) — CI builds it.
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **CSV export is not truly streamed** — the whole document is built in memory.
+  Fine for v1 (≤ 10k rows). For larger exports, run the query in a dedicated
+  session inside the `StreamingResponse` body generator.
+- **CSV import is stateless**, not the two-phase job model in `tech_doc.md` §10
+  (no `import_jobs` table, no upload → job-id → status → commit flow). Adequate
+  for one admin; revisit if imports become large or multi-user.
+- **Rate limiter is in-process** — per ECS task. `api_desired_count > 1` needs a
+  shared store (ElastiCache Redis); flagged in `infra/README.md`.
+- **Refresh-token revocation / logout denylist** (`tech_doc.md` §5.1) still not
+  built — logout stays stateless.
+- **Terraform not applied** — no AWS account was targeted. Single NAT gateway
+  (cost), HTTPS only when `domain_name` is set, and no remote state backend are
+  documented choices in `infra/README.md`.
+- **Frontend + its hosting** — the Next.js app and Amplify/CloudFront infra are
+  a separate effort; the API, DB, and jobs are all that M6 deploys.
+- **`alembic` migration on deploy** — a separate `migrate` ECS task (run from
+  the deploy runbook), not an init container, to avoid races across API tasks.
+- **PDF invoices, automatic GST** — still deferred (Q7.7, Q7.8).

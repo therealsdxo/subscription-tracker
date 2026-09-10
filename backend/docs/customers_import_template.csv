@@ -1,0 +1,3 @@
+name,phone,email,dietary_preference,allergies,notes,address_line,area,city,pincode,landmark,delivery_notes,package_code,start_date,delivery_frequency,delivery_weekdays,meals_per_delivery,time_slot
+Asha Rao,+91 90000 11111,asha@example.com,VEGETARIAN,,VIP customer,12 MG Road,Indiranagar,Bengaluru,560038,Near metro,Ring the bell,,,,,,
+Bhavna Iyer,9000022222,,NON_VEGETARIAN,peanuts,,2 Church Street,Ashok Nagar,Bengaluru,560001,,,PKG-00001,2026-09-15,SPECIFIC_WEEKDAYS,"1,3,5",1,MORNING
