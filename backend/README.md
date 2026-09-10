@@ -57,12 +57,13 @@ Roles: `ADMIN`, `STAFF`. `/api/v1/users/*` is ADMIN-only (see `tech_doc.md` §5.
 | Customers | `GET /customers` (`?q= &phone= &code= &is_active=`), `POST /customers`, `GET /customers/{id}`, `PATCH /customers/{id}` | STAFF |
 | | `POST /customers/{id}/deactivate` · `/reactivate` | ADMIN |
 | Addresses | `GET/POST /customers/{id}/addresses`, `PATCH/DELETE /customers/{id}/addresses/{aid}` | STAFF |
-| Subscriptions | `GET /subscriptions` (`?status= &customer_id= &expiring=`), `POST /subscriptions`, `GET /subscriptions/{id}`, `PATCH /subscriptions/{id}`, `GET /subscriptions/{id}/events` · `/deliveries` · `/skips` | STAFF |
-| | `POST /subscriptions/{id}/pause` · `/resume` · `/renew` · `/skips`, `DELETE .../skips/{id}` | STAFF |
-| | `POST /subscriptions/{id}/extend` · `/cancel` · `/meal-adjustments` | ADMIN |
+| Subscriptions | `GET /subscriptions` (`?status= &customer_id= &expiring= &dues=`), `POST /subscriptions`, `GET /subscriptions/{id}`, `PATCH /subscriptions/{id}`, `GET /subscriptions/{id}/events` · `/deliveries` · `/skips` · `/payments` · `/refunds` | STAFF |
+| | `POST /subscriptions/{id}/pause` · `/resume` · `/renew` · `/skips` · `/payments`, `DELETE .../skips/{id}` | STAFF |
+| | `POST /subscriptions/{id}/extend` · `/cancel` · `/meal-adjustments` · `/refunds` | ADMIN |
 | Deliveries | `GET /deliveries?date=` (`&status= &area= &time_slot= &subscription_id=`), `POST /deliveries/generate`, `PATCH /deliveries/{id}`, `POST /deliveries/{id}/reverse` | STAFF |
 | Holidays | `GET /holidays` (`?start= &end=`) | STAFF |
 | | `POST /holidays`, `DELETE /holidays/{id}` | ADMIN |
+| Payments | `GET /payments` (`?subscription_id= &customer_id= &method= &date_from= &date_to=`), `GET /payments/{id}` | STAFF |
 
 Packages compute `final_price = base_price + tax_amount` and are assigned a
 `PKG-#####` code; customers get a `CUST-######` code (prefix/width from the
@@ -89,6 +90,16 @@ date. Recording a `DELIVERED` outcome decrements `meals_consumed` (auto-
 `COMPLETED` at zero) under a row lock; `POST /deliveries/{id}/reverse` restores
 the exact amount and re-opens the delivery. Adding a holiday or a planned skip
 cancels deliveries already scheduled for those dates.
+
+**Payments** are recorded against a subscription (which owes its snapshotted
+`final_price`); multiple installments are allowed. `payment_status` /
+`total_paid` / `net_paid` / `outstanding_amount` / `suggested_refund` are
+**derived** (never stored) and appear on every subscription response.
+`outstanding_amount = max(final_price − (Σ payments − Σ refunds), 0)`. Refunds
+are ADMIN-only, require a reason, and cannot exceed the net amount paid; there is
+no automatic proration (`suggested_refund` is guidance only). Payment state
+never blocks activation or delivery recording. `GET /subscriptions?dues=true`
+lists subscriptions with an outstanding balance.
 
 ## Migrations
 
@@ -121,10 +132,12 @@ app/
   core/              config, db session, security, logging, middleware, errors, deps
   models/            SQLAlchemy models (users, settings, audit_logs, packages,
                      customers/addresses, subscriptions/events/meal_adjustments,
-                     deliveries/planned_skips/holidays, code sequences)
+                     deliveries/planned_skips/holidays, payments/refunds,
+                     code sequences)
   schemas/           Pydantic request/response models
+  api/v1/presenters.py  enrich subscriptions with the derived payment view
   api/v1/routers/    HTTP endpoints (health, auth, users, packages, customers,
-                     subscriptions, deliveries, holidays)
+                     subscriptions, deliveries, holidays, payments)
   services/          business rules (transactional)
   repositories/      query helpers
   workers/           expiry_job — daily activate/expire sweep

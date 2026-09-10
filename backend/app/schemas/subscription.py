@@ -11,10 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.models.enums import (
     DeliveryFrequency,
     DietaryPreference,
+    PaymentStatus,
     SubscriptionEventType,
     SubscriptionStatus,
     TimeSlot,
 )
+
+_ZERO = Decimal("0.00")
 
 Weekday = Annotated[int, Field(ge=1, le=7)]
 
@@ -178,6 +181,14 @@ class SubscriptionOut(BaseModel):
     snapshot_dietary_preference: DietaryPreference | None
     subscription_notes: str | None
     previous_subscription_id: int | None
+
+    # Derived payment view (Milestone 5) — enriched by the router/presenter;
+    # defaults keep ``model_validate(orm_obj)`` working before enrichment.
+    payment_status: PaymentStatus = PaymentStatus.UNPAID
+    total_paid: Decimal = _ZERO
+    net_paid: Decimal = _ZERO
+    outstanding_amount: Decimal = _ZERO
+    suggested_refund: Decimal = _ZERO
 
     created_at: datetime
     updated_at: datetime

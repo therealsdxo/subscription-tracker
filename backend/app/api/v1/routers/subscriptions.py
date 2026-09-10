@@ -9,6 +9,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
+from app.api.v1 import presenters
 from app.core.deps import CurrentUser, SessionDep, require_admin, require_staff
 from app.models.enums import SubscriptionStatus
 from app.models.user import User
@@ -17,6 +18,13 @@ from app.schemas.delivery import (
     DeliveryOut,
     PlannedSkipCreate,
     PlannedSkipOut,
+)
+from app.schemas.payment import (
+    PaymentCreate,
+    PaymentOut,
+    RefundCreate,
+    RefundOut,
+    SubscriptionPaymentsView,
 )
 from app.schemas.subscription import (
     CancelRequest,
@@ -31,7 +39,7 @@ from app.schemas.subscription import (
     SubscriptionRenew,
     SubscriptionUpdate,
 )
-from app.services import delivery_service, subscription_service
+from app.services import delivery_service, payment_service, subscription_service
 
 router = APIRouter(
     prefix="/subscriptions",
@@ -48,6 +56,7 @@ async def list_subscriptions(
     status_filter: Annotated[SubscriptionStatus | None, Query(alias="status")] = None,
     customer_id: Annotated[int | None, Query()] = None,
     expiring: Annotated[bool, Query()] = False,
+    dues: Annotated[bool, Query()] = False,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> Page[SubscriptionOut]:
@@ -56,11 +65,12 @@ async def list_subscriptions(
         status=status_filter,
         customer_id=customer_id,
         expiring=expiring,
+        dues=dues,
         limit=page_size,
         offset=(page - 1) * page_size,
     )
     return Page[SubscriptionOut](
-        items=[SubscriptionOut.model_validate(r) for r in rows],
+        items=await presenters.subscription_out_list(session, rows),
         total=total,
         page=page,
         page_size=page_size,
@@ -74,7 +84,7 @@ async def create_subscription(
     sub = await subscription_service.create_subscription(
         session, payload, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.get("/{subscription_id}", response_model=SubscriptionDetail)
@@ -84,7 +94,7 @@ async def get_subscription(
     sub = await subscription_service.get_subscription(
         session, subscription_id, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.patch("/{subscription_id}", response_model=SubscriptionDetail)
@@ -97,7 +107,7 @@ async def update_subscription(
     sub = await subscription_service.update_subscription(
         session, subscription_id, payload, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.get("/{subscription_id}/events", response_model=list[SubscriptionEventOut])
@@ -118,7 +128,7 @@ async def pause_subscription(
     sub = await subscription_service.pause_subscription(
         session, subscription_id, payload.reason, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.post("/{subscription_id}/resume", response_model=SubscriptionDetail)
@@ -132,7 +142,7 @@ async def resume_subscription(
     sub = await subscription_service.resume_subscription(
         session, subscription_id, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.post("/{subscription_id}/renew", response_model=SubscriptionDetail,
@@ -146,7 +156,7 @@ async def renew_subscription(
     sub = await subscription_service.renew_subscription(
         session, subscription_id, payload, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.post("/{subscription_id}/extend", response_model=SubscriptionDetail)
@@ -164,7 +174,7 @@ async def extend_subscription(
         reason=payload.reason,
         actor_id=actor.id,
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.post("/{subscription_id}/cancel", response_model=SubscriptionDetail)
@@ -177,7 +187,7 @@ async def cancel_subscription(
     sub = await subscription_service.cancel_subscription(
         session, subscription_id, payload.reason, actor_id=actor.id
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 @router.post("/{subscription_id}/meal-adjustments", response_model=SubscriptionDetail)
@@ -194,7 +204,7 @@ async def adjust_meals(
         reason=payload.reason,
         actor_id=actor.id,
     )
-    return SubscriptionDetail.model_validate(sub)
+    return await presenters.subscription_detail(session, sub)
 
 
 # --- deliveries & planned skips (Milestone 4) ------------------------
@@ -256,3 +266,64 @@ async def remove_planned_skip(
         session, subscription_id, skip_id, actor_id=actor.id
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- payments & refunds (Milestone 5) --------------------------------
+
+
+@router.get(
+    "/{subscription_id}/payments", response_model=SubscriptionPaymentsView
+)
+async def subscription_payments(
+    subscription_id: int, session: SessionDep
+) -> SubscriptionPaymentsView:
+    summary, payments, refunds = await payment_service.payments_view(
+        session, subscription_id
+    )
+    return SubscriptionPaymentsView(
+        summary=summary,
+        payments=[PaymentOut.model_validate(p) for p in payments],
+        refunds=[RefundOut.model_validate(r) for r in refunds],
+    )
+
+
+@router.post(
+    "/{subscription_id}/payments",
+    response_model=PaymentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_payment(
+    subscription_id: int,
+    payload: PaymentCreate,
+    session: SessionDep,
+    actor: CurrentUser,
+) -> PaymentOut:
+    payment = await payment_service.record_payment(
+        session, subscription_id, payload, actor_id=actor.id
+    )
+    return PaymentOut.model_validate(payment)
+
+
+@router.get("/{subscription_id}/refunds", response_model=list[RefundOut])
+async def subscription_refunds(
+    subscription_id: int, session: SessionDep
+) -> list[RefundOut]:
+    _, _, refunds = await payment_service.payments_view(session, subscription_id)
+    return [RefundOut.model_validate(r) for r in refunds]
+
+
+@router.post(
+    "/{subscription_id}/refunds",
+    response_model=RefundOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def issue_refund(
+    subscription_id: int,
+    payload: RefundCreate,
+    session: SessionDep,
+    actor: AdminUser,
+) -> RefundOut:
+    refund = await payment_service.issue_refund(
+        session, subscription_id, payload, actor_id=actor.id
+    )
+    return RefundOut.model_validate(refund)

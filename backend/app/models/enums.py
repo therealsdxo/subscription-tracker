@@ -42,6 +42,23 @@ TERMINAL_SUBSCRIPTION_STATUSES = frozenset(
 )
 
 
+class PaymentMethod(str, enum.Enum):
+    CASH = "CASH"
+    UPI = "UPI"
+    CARD = "CARD"
+    BANK_TRANSFER = "BANK_TRANSFER"
+    OTHER = "OTHER"
+
+
+class PaymentStatus(str, enum.Enum):
+    """Derived from the payment/refund rows — never stored (BL-18, tech_doc §4.6)."""
+
+    UNPAID = "UNPAID"
+    PARTIALLY_PAID = "PARTIALLY_PAID"
+    PAID = "PAID"
+    REFUNDED = "REFUNDED"
+
+
 class DeliveryFrequency(str, enum.Enum):
     DAILY = "DAILY"
     SPECIFIC_WEEKDAYS = "SPECIFIC_WEEKDAYS"

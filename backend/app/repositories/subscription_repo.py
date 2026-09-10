@@ -159,6 +159,7 @@ def _search_stmt(
     status: SubscriptionStatus | None,
     customer_id: int | None,
     expiring: bool,
+    dues: bool,
     today: date,
     days_threshold: int,
     meals_threshold: int,
@@ -176,6 +177,10 @@ def _search_stmt(
                 Subscription.meals_remaining <= meals_threshold,
             )
         )
+    if dues:
+        from app.repositories.payment_repo import outstanding_expr
+
+        conditions.append(outstanding_expr())
     stmt = select(Subscription)
     count_stmt = select(func.count()).select_from(Subscription)
     if conditions:
@@ -190,6 +195,7 @@ async def search(
     status: SubscriptionStatus | None,
     customer_id: int | None,
     expiring: bool,
+    dues: bool,
     today: date,
     days_threshold: int,
     meals_threshold: int,
@@ -200,6 +206,7 @@ async def search(
         status=status,
         customer_id=customer_id,
         expiring=expiring,
+        dues=dues,
         today=today,
         days_threshold=days_threshold,
         meals_threshold=meals_threshold,

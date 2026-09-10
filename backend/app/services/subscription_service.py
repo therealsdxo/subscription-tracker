@@ -233,6 +233,7 @@ async def list_subscriptions(
     status: SubscriptionStatus | None,
     customer_id: int | None,
     expiring: bool,
+    dues: bool = False,
     limit: int,
     offset: int,
 ) -> tuple[list[Subscription], int]:
@@ -244,6 +245,7 @@ async def list_subscriptions(
         status=status,
         customer_id=customer_id,
         expiring=expiring,
+        dues=dues,
         today=business_today(),
         days_threshold=days_t,
         meals_threshold=meals_t,

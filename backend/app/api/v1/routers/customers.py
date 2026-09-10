@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
+from app.api.v1 import presenters
 from app.core.deps import CurrentUser, SessionDep, require_admin, require_staff
 from app.models.user import User
 from app.schemas.common import DataWithWarnings, Page
@@ -23,7 +24,7 @@ from app.schemas.customer import (
     CustomerOut,
     CustomerUpdate,
 )
-from app.schemas.subscription import CustomerSubscriptionSummary, SubscriptionOut
+from app.schemas.subscription import CustomerSubscriptionSummary
 from app.services import customer_service, subscription_service
 
 router = APIRouter(
@@ -79,7 +80,9 @@ async def get_customer(customer_id: int, session: SessionDep) -> CustomerDetail:
     current, past = await subscription_service.customer_summary(session, customer_id)
     detail = CustomerDetail.model_validate(customer)
     detail.subscriptions = CustomerSubscriptionSummary(
-        current=SubscriptionOut.model_validate(current) if current else None,
+        current=(
+            await presenters.subscription_out(session, current) if current else None
+        ),
         past_count=past,
     )
     return detail
