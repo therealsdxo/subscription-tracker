@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.enums import DietaryPreference
+from app.schemas.subscription import CustomerSubscriptionSummary
 
 
 class AddressBase(BaseModel):
@@ -105,3 +106,6 @@ class CustomerOut(BaseModel):
 
 class CustomerDetail(CustomerOut):
     addresses: list[AddressOut] = Field(default_factory=list)
+    subscriptions: CustomerSubscriptionSummary = Field(
+        default_factory=CustomerSubscriptionSummary
+    )

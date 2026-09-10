@@ -23,7 +23,8 @@ from app.schemas.customer import (
     CustomerOut,
     CustomerUpdate,
 )
-from app.services import customer_service
+from app.schemas.subscription import CustomerSubscriptionSummary, SubscriptionOut
+from app.services import customer_service, subscription_service
 
 router = APIRouter(
     prefix="/customers",
@@ -75,7 +76,13 @@ async def create_customer(
 @router.get("/{customer_id}", response_model=CustomerDetail)
 async def get_customer(customer_id: int, session: SessionDep) -> CustomerDetail:
     customer = await customer_service.get_customer(session, customer_id)
-    return CustomerDetail.model_validate(customer)
+    current, past = await subscription_service.customer_summary(session, customer_id)
+    detail = CustomerDetail.model_validate(customer)
+    detail.subscriptions = CustomerSubscriptionSummary(
+        current=SubscriptionOut.model_validate(current) if current else None,
+        past_count=past,
+    )
+    return detail
 
 
 @router.patch("/{customer_id}", response_model=CustomerResult)

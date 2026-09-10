@@ -14,19 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ConflictError, NotFoundError
 from app.models.enums import PackageStatus
 from app.models.package import Package
-from app.repositories import package_repo
+from app.repositories import package_repo, subscription_repo
 from app.schemas.package import PackageCreate, PackageUpdate
 from app.services import audit_service, code_service
 
 
 async def is_package_referenced(session: AsyncSession, package_id: int) -> bool:
-    """Whether any subscription has ever used this package.
-
-    Milestone 2 has no ``subscriptions`` table yet, so this is always ``False``.
-    Milestone 3 replaces the body with a real ``EXISTS`` check. The guard in
-    :func:`delete_package` / :func:`_ensure_not_referenced` is already wired.
-    """
-    return False
+    """Whether any subscription has ever used this package (BR-6)."""
+    return await subscription_repo.package_in_use(session, package_id)
 
 
 def _summary(pkg: Package) -> dict[str, object]:
