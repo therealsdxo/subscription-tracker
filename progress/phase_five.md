@@ -156,6 +156,71 @@
       record open items at the end of this file.
     - Commit on a feature branch, open a PR, confirm CI is green.
 
+# Status — Milestone 4 complete (2026-09-10)
+
+Delivered on branch `feat-deliveries`:
+
+- **Enums**: `DeliveryStatus` + `TERMINAL_DELIVERY_STATUSES` /
+  `DELIVERY_PROGRESS_STATUSES` / `WEEKDAY_NAMES` helpers.
+- **Migration `0004_deliveries`**: `deliveries` (unique
+  `(subscription_id, delivery_date, time_slot)`, `meal_quantity`/`meals_deducted`
+  checks, `reversed`/`reversal_*` columns), `planned_skips` (range-ordered check),
+  `holidays` (unique date). up/down/up clean.
+- **`settings_service`**: `get_str`, `closed_weekday_index()` (maps the
+  `closed_weekday` name → `date.weekday()`).
+- **`delivery_service`**:
+  - `is_open_day()` = not the weekly closed day and not a holiday.
+  - `generate(on_date)` — idempotent (`INSERT … ON CONFLICT DO NOTHING …
+    RETURNING`), returns `{date, created, open_day}`; respects
+    frequency (`DAILY` / `SPECIFIC_WEEKDAYS` / `CUSTOM` where
+    `custom_schedule = {"dates": [...]}`), planned skips, the subscription
+    window and balance.
+  - `set_status()` — row-locks the delivery **and** the subscription;
+    `DELIVERED` decrements `meals_consumed` and auto-`COMPLETED`s at zero;
+    positive outcomes (`PREPARING`/`OUT_FOR_DELIVERY`/`DELIVERED`) are blocked
+    when the subscription is not `ACTIVE` (BR-29); a finalised delivery is 409.
+  - `reverse()` — restores the exact `meals_deducted`, sets status back to
+    `SCHEDULED`, records `reversed`/`reversal_*`, rolls `COMPLETED → ACTIVE`.
+  - planned skips: add cancels non-terminal deliveries in range.
+- **`holiday_service`**: list / add (cancels non-terminal deliveries on the
+  date) / remove. ADMIN for writes.
+- **Endpoints**: `GET /deliveries?date=` (+status/area/time_slot/subscription_id),
+  `POST /deliveries/generate`, `PATCH /deliveries/{id}`,
+  `POST /deliveries/{id}/reverse`; `GET/POST /subscriptions/{id}/skips` +
+  `DELETE`, `GET /subscriptions/{id}/deliveries`; `GET/POST/DELETE /holidays`.
+- Tests: `test_deliveries.py` (19) — generation (Tuesday/holiday/skip/paused/
+  idempotency/weekday), recording (deduct / multi-meal / complete-at-zero /
+  block-on-cancelled / double-mark), reversal (restore / `COMPLETED→ACTIVE` /
+  not-reversible), holiday & skip cancel existing, RBAC, and a **real
+  two-transaction row-lock test** proving the balance moves exactly once.
+  **77 pass** total.
+- `backend/README.md` updated.
+
+Verified locally: ruff, mypy(strict), `alembic upgrade head` /
+`downgrade base` / re-upgrade, 77/77 pytest, and a live run: generate (Mon → 1,
+Tue → 0/closed) → daily list with area/customer → `DELIVERED` (remaining 25→24)
+→ reverse (→25, status `SCHEDULED`) → add holiday → generate on that date (0/
+closed).
+
 # Open questions / deferred
 
-_(fill in during the work)_
+- **Payments** (`payment_status`, dues) — Milestone 5. Deliveries do not check
+  payment state (Q7.5: delivery is independent of payment).
+- **BR-29 scope**: the hard block covers only the "positive" outcomes
+  (`PREPARING`/`OUT_FOR_DELIVERY`/`DELIVERED`). `SKIPPED`/`CANCELLED`/`FAILED`
+  are allowed on a non-`ACTIVE` subscription so staff can tidy the list. Slight
+  deviation from the phase-five plan's "any status change"; revisit if the
+  business wants it stricter.
+- **Pausing/cancelling a subscription does not auto-cancel its future
+  `SCHEDULED` deliveries** yet — only holidays and planned skips do. Generation
+  won't create new ones for a paused/cancelled sub, but stale rows can linger
+  until the daily list is regenerated. Worth adding a sweep in M5/M6.
+- **`custom_schedule`** validates only that `{"dates": [...]}` is present and
+  well-shaped enough for `due_on`; no calendar/holiday cross-check at
+  subscription-edit time.
+- **`RESCHEDULED`** sets `rescheduled_to_date` but does not itself create the
+  new date's delivery — the next `generate` run for that date does (only if the
+  subscription's frequency makes it due; a one-off reschedule outside the
+  frequency is not yet supported).
+- **Daily-list `area` filter** matches on `snapshot_delivery_address->>'area'`;
+  fine for v1, but there is no delivery-zone model (Q6.10, deferred).

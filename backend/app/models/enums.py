@@ -55,6 +55,47 @@ class TimeSlot(str, enum.Enum):
     CUSTOM = "CUSTOM"
 
 
+class DeliveryStatus(str, enum.Enum):
+    SCHEDULED = "SCHEDULED"
+    PREPARING = "PREPARING"
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"
+    DELIVERED = "DELIVERED"
+    SKIPPED = "SKIPPED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+    RESCHEDULED = "RESCHEDULED"
+
+
+# A delivery in one of these states is finished — only ``DELIVERED`` moved meals.
+TERMINAL_DELIVERY_STATUSES = frozenset(
+    {
+        DeliveryStatus.DELIVERED,
+        DeliveryStatus.SKIPPED,
+        DeliveryStatus.CANCELLED,
+        DeliveryStatus.FAILED,
+        DeliveryStatus.RESCHEDULED,
+    }
+)
+# Positive outcomes — blocked when the subscription is not ACTIVE (BR-29).
+DELIVERY_PROGRESS_STATUSES = frozenset(
+    {
+        DeliveryStatus.PREPARING,
+        DeliveryStatus.OUT_FOR_DELIVERY,
+        DeliveryStatus.DELIVERED,
+    }
+)
+
+WEEKDAY_NAMES: dict[str, int] = {
+    "MONDAY": 0,
+    "TUESDAY": 1,
+    "WEDNESDAY": 2,
+    "THURSDAY": 3,
+    "FRIDAY": 4,
+    "SATURDAY": 5,
+    "SUNDAY": 6,
+}
+
+
 class SubscriptionEventType(str, enum.Enum):
     CREATED = "CREATED"
     ACTIVATED = "ACTIVATED"

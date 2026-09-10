@@ -7,7 +7,9 @@ from fastapi import APIRouter
 from app.api.v1.routers import (
     auth,
     customers,
+    deliveries,
     health,
+    holidays,
     packages,
     subscriptions,
     users,
@@ -20,3 +22,5 @@ api_router.include_router(users.router)
 api_router.include_router(packages.router)
 api_router.include_router(customers.router)
 api_router.include_router(subscriptions.router)
+api_router.include_router(deliveries.router)
+api_router.include_router(holidays.router)

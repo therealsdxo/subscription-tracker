@@ -7,12 +7,17 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.core.deps import CurrentUser, SessionDep, require_admin, require_staff
 from app.models.enums import SubscriptionStatus
 from app.models.user import User
 from app.schemas.common import Page
+from app.schemas.delivery import (
+    DeliveryOut,
+    PlannedSkipCreate,
+    PlannedSkipOut,
+)
 from app.schemas.subscription import (
     CancelRequest,
     ExtendRequest,
@@ -26,7 +31,7 @@ from app.schemas.subscription import (
     SubscriptionRenew,
     SubscriptionUpdate,
 )
-from app.services import subscription_service
+from app.services import delivery_service, subscription_service
 
 router = APIRouter(
     prefix="/subscriptions",
@@ -190,3 +195,64 @@ async def adjust_meals(
         actor_id=actor.id,
     )
     return SubscriptionDetail.model_validate(sub)
+
+
+# --- deliveries & planned skips (Milestone 4) ------------------------
+
+
+@router.get(
+    "/{subscription_id}/deliveries", response_model=list[DeliveryOut]
+)
+async def list_subscription_deliveries(
+    subscription_id: int, session: SessionDep
+) -> list[DeliveryOut]:
+    rows = await delivery_service.for_subscription(session, subscription_id)
+    return [DeliveryOut.model_validate(r) for r in rows]
+
+
+@router.get(
+    "/{subscription_id}/skips", response_model=list[PlannedSkipOut]
+)
+async def list_planned_skips(
+    subscription_id: int, session: SessionDep
+) -> list[PlannedSkipOut]:
+    rows = await delivery_service.list_planned_skips(session, subscription_id)
+    return [PlannedSkipOut.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/{subscription_id}/skips",
+    response_model=PlannedSkipOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_planned_skip(
+    subscription_id: int,
+    payload: PlannedSkipCreate,
+    session: SessionDep,
+    actor: CurrentUser,
+) -> PlannedSkipOut:
+    skip = await delivery_service.add_planned_skip(
+        session,
+        subscription_id,
+        skip_from=payload.skip_date_from,
+        skip_to=payload.skip_date_to,
+        reason=payload.reason,
+        actor_id=actor.id,
+    )
+    return PlannedSkipOut.model_validate(skip)
+
+
+@router.delete(
+    "/{subscription_id}/skips/{skip_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_planned_skip(
+    subscription_id: int,
+    skip_id: int,
+    session: SessionDep,
+    actor: CurrentUser,
+) -> Response:
+    await delivery_service.remove_planned_skip(
+        session, subscription_id, skip_id, actor_id=actor.id
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

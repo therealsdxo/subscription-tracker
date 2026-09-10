@@ -153,6 +153,17 @@ async def _sync_completion(
         await session.flush()
 
 
+async def recompute_after_meal_change(
+    session: AsyncSession, sub: Subscription, *, actor_id: int | None
+) -> None:
+    """Public entry point for other services (deliveries) that move the balance.
+
+    Completes a subscription that hits zero, or revives a ``COMPLETED`` one whose
+    balance went back positive within its window.
+    """
+    await _sync_completion(session, sub, actor_id=actor_id)
+
+
 async def _activate_next(
     session: AsyncSession, customer_id: int, *, actor_id: int | None
 ) -> None:
