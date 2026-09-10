@@ -164,15 +164,46 @@ Handles everyday operations.
 2.3 What can a non‑admin **not** do? (create/deactivate packages? change pricing?
 delete customers? issue refunds?)
 
+#### Answer:
+Staff should not be able to:
+- Delete customers
+- Create/deactivate packages
+- Change package pricing
+- Manually alter meal balances without authorization
+- Issue refunds
+- Manage users
+- Change system settings
+
 2.4 How do users authenticate — username+password, email+password, SSO/Google?
 Any password policy / 2FA requirement?
 
+#### Answer:
+Email + password
+Passwords must be securely hashed.
+
 2.5 How many staff users total, and roughly how many use it concurrently?
+
+#### Answer:
+Design initially for approximately:
+- 5–20 registered users
+- 1–10 simultaneous users
+Do not hardcode this limitation.
 
 2.6 Do you need an **audit log** (who created/updated/deleted what, and when)?
 **[suggest: yes — at least for deliveries, payments, package changes, meal
 adjustments]**
 
+#### Answer:
+Yes.
+Audit at minimum:
+- Package modifications
+- Subscription extensions
+- Subscription cancellations
+- Meal adjustments
+- Delivery reversals
+- Payments
+- Refunds
+- Customer deletion/deactivation
 ---
 
 # 3. Customer
@@ -180,24 +211,80 @@ adjustments]**
 3.1 `customer_id` — system‑generated (e.g. `CUST-00001`) or entered by staff?
 Any required format?
 
+#### Answer:
+System generated.
+Example:
+CUST-000001
+
 3.2 Which customer fields are **required** vs optional:
 name, phone, email, address, dietary preference, delivery instructions?
 
+#### Answer:
+Required:
+- Name
+- Phone
+- Delivery address
+Optional:
+- Email
+- Dietary preference
+- Delivery instructions
+- Allergies
+- Notes
+
 3.3 Must phone and/or email be **unique**? Should the system warn on likely
 duplicate customers (same phone/name)?
+
+#### Answer:
+Yes Phone number and email must be unique
 
 3.4 Address: one address per customer, or separate billing vs delivery address?
 Free‑text or structured (line1, area, city, pincode, landmark)? Do you need
 pincode/area for delivery zoning later?
 
+#### Answer:
+there can be multiple address per customer
+Use structured fields:
+- Address line
+- Area/locality
+- City
+- Pincode
+- Landmark
+- Delivery notes
+This will help later if you add delivery zoning or route optimization.
+
 3.5 Can a customer's delivery address differ **per subscription**, or is it always
 the customer's current address?
+
+#### Answer:
+It Can differ
 
 3.6 **Dietary preference** — does it belong to the customer or the subscription?
 Is it a fixed list (Veg / Non‑Veg / Vegan / Jain / Eggetarian) or free text?
 Do you need to record allergies separately?
 
+#### Answer:
+Keep the default dietary profile on the customer.
+Recommended structured values:
+- Vegetarian
+- Non-Vegetarian
+- Eggetarian
+- Vegan
+- Jain
+- Other
+Also provide:
+dietary_notes
+Allergies should be a separate field because they are more operationally important than preference.
+
+
 3.7 Any GDPR‑style / privacy requirements for storing customer contact data?
+
+#### Answer:
+For v1:
+- Restrict customer information to authenticated staff.
+- Use HTTPS.
+- Do not expose customer information publicly.
+- Avoid storing unnecessary personal information.
+- Log sensitive administrative actions.
 
 ---
 
@@ -205,8 +292,20 @@ Do you need to record allergies separately?
 
 4.1 `package_id` — system‑generated or manual?
 
+#### Answer:
+System Generated
+Example:
+PKG-00001
+
 4.2 Field types: are `number_of_meals` and `validity_days` always whole numbers?
 Is price always integer INR, or can it have paise? Currency always INR?
+
+#### Answer:
+number_of_meals → positive integer
+validity_days → positive integer
+price → decimal
+Currency:
+INR
 
 4.3 **Validity window definition** (critical): is `validity_days` counted as
 calendar days from start date, or as delivery days (excluding Tuesdays/holidays)?
@@ -214,18 +313,53 @@ Example: 25‑meal / 50‑day package starting Mon 01 Sep 2026 — what exact da
 it expire? **[suggest: calendar days, expiry = start + validity_days, inclusive
 of start date; Tuesdays don't extend it]**
 
+#### Answer:
+Use calendar days.
+Formula:
+expected_end_date = start_date + validity_days
+Tuesdays and holidays count toward validity.
+
 4.4 When an authorized user edits a package (price, meals, validity, name),
 should existing **active** subscriptions be completely unaffected (per BL‑17)?
 Confirm: yes, edits only apply to *new* subscriptions from that point.
 
+#### Answer:
+Correct.
+Existing subscriptions must remain unaffected.
+Changes apply only to new subscriptions.
+HealthX therefore snapshots:
+- Package name
+- Meal quantity
+- Validity
+- Price
+when creating the subscription.
+
 4.5 Can a package be **hard‑deleted** if it has never been used in any
 subscription? (BL‑16 only covers used packages → inactive.)
+
+#### Answer:
+Yes.
+A package may be hard-deleted only if it has never been assigned to any subscription.
+Once used, it can only be deactivated.
 
 4.6 Are `package_description` and `package_status` required on creation? Default
 status = ACTIVE?
 
+#### Answer:
+Description:
+Optional.
+Status:
+Default to:
+ACTIVE
+
 4.7 Any minimum/maximum bounds you want enforced (e.g. meals 1–500, validity
 1–365 days, price ≥ 0)?
+
+#### Answer:
+Recommended validation:
+- Meals: 1–500
+- Validity: 1–730 days
+- Price: >= ₹0
 
 ---
 
@@ -234,43 +368,133 @@ status = ACTIVE?
 5.1 Can a customer have **more than one ACTIVE subscription at the same time**, or
 strictly one at a time? **[suggest: one active at a time for v1]**
 
+#### Answer:
+For v1:
+One ACTIVE subscription per customer at a time.
+A future subscription may be queued.
+
 5.2 `subscription_id` format — system‑generated?
+
+#### Answer:
+System generated.
+Example:
+SUB-000001
 
 5.3 `start_date` — can staff **back‑date** it (subscription started last week) or
 **future‑date** it (starts next Monday)? Any limits?
 
+#### Answer:
+Allow:
+- Back-dating
+- Current date
+- Future-dating
+But log who created/changed the subscription.
+
 5.4 What if `start_date` falls on a Tuesday — allowed, auto‑shifted to next day,
 or blocked?
+
+#### Answer:
+Allow it.
+The subscription validity begins on the selected date even if there is no delivery that day.
 
 5.5 Exactly which package fields are **snapshotted** onto the subscription at
 creation (BL‑17): name, meals, validity_days, price — anything else?
 
+#### Answer:
+Store:
+- Package ID reference
+- Package name
+- Number of meals
+- Validity days
+- Price
+Potentially also:
+- Package description, if historically useful
+
 5.6 Besides the snapshot, does the subscription store: delivery frequency,
 dietary preference, delivery address, delivery time slot, notes?
+
+#### Answer: 
+Yes. Store:
+- Delivery frequency
+- Delivery address snapshot
+- Dietary preference snapshot
+- Delivery time slot
+- Subscription notes
 
 5.7 **Status computation** — is `subscription_status` a stored field updated by a
 scheduled job (e.g. nightly), or computed live whenever a record is viewed?
 **[suggest: computed live for correctness, plus a nightly job to snapshot for
 reporting/alerts]**
 
+#### Answer:
+Use a hybrid approach.
+Store subscription_status, but validate/recalculate expiry whenever relevant operations happen.
+Also run a scheduled daily expiry process later.
+
 5.8 `COMPLETED` triggers when `meals_remaining = 0` even if before the expiry
 date — confirm. And once COMPLETED, is the subscription closed (no more
 deliveries) until a renewal?
+
+#### Answer:
+Confirmed.
+When:
+meals_remaining = 0
+status becomes:
+COMPLETED
+No further deliveries are allowed.
 
 5.9 When a subscription `EXPIRES` with meals left, those meals are forfeited
 unless an authorized user extends it. Who can extend, and how — push the expiry
 date out by N days? Is there any log/reason required?
 
+#### Answer:
+Unused meals are forfeited once expired.
+Only ADMIN may extend a subscription.
+Extension requires:
+- Number of days / new expiry
+- Mandatory reason
+- User performing extension
+- Timestamp
+- Original expiry date
+- New expiry date
+
 5.10 **PAUSED** — who can pause, why (customer travelling, etc.), and does a
 pause **extend the expiry date** by the paused duration? **[suggest: yes, pausing
 extends expiry by the pause length]**
 
+#### Answer:
+Yes.
+Both Admin and authorized Staff may pause.
+Reasons might include:
+- Travel
+- Medical
+- Customer request
+- Temporary absence
+- Other
+Recommended behavior:
+Pause extends expiry by the number of paused days.
+
 5.11 **CANCELLED** — who can cancel, and does cancellation trigger a refund
 calculation (see Q7.6)? Is a reason required?
+
+#### Answer:
+Admin should perform final cancellation.
+Cancellation requires a reason.
+Refunds are handled separately rather than automatically.
 
 5.12 Can staff **manually adjust `meals_remaining`** (goodwill credit, comp for a
 bad meal, correcting a mistake)? If yes, should it require a reason + be audited?
 **[suggest: yes, with mandatory reason]**
+
+#### Answer:
+Yes.
+Admin can manually adjust meals.
+Require:
+- Adjustment quantity
+- Reason
+- Timestamp
+- User ID
+Every adjustment must be audited.
 
 ---
 
