@@ -164,7 +164,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" description="Users and holiday calendar" />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <UsersSection isAdmin={isAdmin} />
         <HolidaysSection isAdmin={isAdmin} />
       </div>
