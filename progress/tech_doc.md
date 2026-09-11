@@ -287,8 +287,8 @@ Rules:
 | delivery_weekdays | int[] | ISO weekdays 1–7, required when `SPECIFIC_WEEKDAYS` |
 | custom_schedule | jsonb | required when `CUSTOM` (list of dates or rule) |
 | meals_per_delivery | int | default 1, ≥ 1 |
-| delivery_time_slot | enum `time_slot` | `MORNING` \| `LUNCH` \| `EVENING` \| `CUSTOM` |
-| delivery_time_slot_note | text | nullable (for `CUSTOM`) |
+| delivery_time_slots | enum `time_slot`[] | not null, ≥ 1 entry, no duplicates. One or more of `MORNING` \| `LUNCH` \| `EVENING` \| `CUSTOM`. Generation makes one delivery per slot per due day, so a subscription with more than one slot is how a single customer gets more than one delivery a day under one subscription (v1.1) |
+| delivery_time_slot_note | text | nullable — required if `CUSTOM` is one of the slots; one shared note, not per-slot |
 | delivery_address_id | bigint FK customer_addresses | the address chosen for this subscription |
 | snapshot_delivery_address | jsonb | address fields copied at creation (can differ per subscription) (Q3.5) |
 | snapshot_dietary_preference | enum `dietary_pref` | copied from customer at creation, overridable |
@@ -678,10 +678,17 @@ generate_deliveries(date D):
      if D within any planned_skip of sub: continue              # BR-31
      if not due_on(sub, D): continue        # frequency / weekday / custom rule
      qty = min(sub.meals_per_delivery, sub.meals_remaining)
-     upsert delivery(sub, D, sub.delivery_time_slot)
-        on conflict (subscription_id, delivery_date, time_slot) do nothing
-        with status = SCHEDULED, meal_quantity = qty
+     for slot in sub.delivery_time_slots:   # usually one; more than one → multiple deliveries/day
+        upsert delivery(sub, D, slot)
+           on conflict (subscription_id, delivery_date, time_slot) do nothing
+           with status = SCHEDULED, meal_quantity = qty
 ```
+
+`qty` is computed once per subscription per run (against `meals_remaining` at
+generation time) and reused for every slot — consumption is only ever deducted
+per-delivery when it's actually marked `DELIVERED` (§6.2), so an
+under-provisioned balance caps each delivery independently at record time, not
+at generation time.
 
 `due_on`:
 - `DAILY` → always (on an open day)
@@ -830,7 +837,7 @@ POST /api/v1/subscriptions
   "delivery_frequency": "SPECIFIC_WEEKDAYS",
   "delivery_weekdays": [1, 3, 5],
   "meals_per_delivery": 1,
-  "delivery_time_slot": "MORNING",
+  "delivery_time_slots": ["MORNING", "EVENING"],
   "delivery_address_id": 88,
   "dietary_preference_override": null,
   "subscription_notes": "Gate code 4471"
