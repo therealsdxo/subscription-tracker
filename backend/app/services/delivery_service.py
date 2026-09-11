@@ -67,23 +67,24 @@ async def generate(
         if await delivery_repo.skip_covers(session, sub.id, on_date):
             continue
         qty = min(sub.meals_per_delivery, sub.meals_remaining)
-        stmt = (
-            pg_insert(Delivery)
-            .values(
-                subscription_id=sub.id,
-                customer_id=sub.customer_id,
-                delivery_date=on_date,
-                time_slot=sub.delivery_time_slot,
-                status=_DS.SCHEDULED,
-                meal_quantity=qty,
+        for slot in sub.delivery_time_slots:
+            stmt = (
+                pg_insert(Delivery)
+                .values(
+                    subscription_id=sub.id,
+                    customer_id=sub.customer_id,
+                    delivery_date=on_date,
+                    time_slot=slot,
+                    status=_DS.SCHEDULED,
+                    meal_quantity=qty,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=["subscription_id", "delivery_date", "time_slot"]
+                )
+                .returning(Delivery.id)
             )
-            .on_conflict_do_nothing(
-                index_elements=["subscription_id", "delivery_date", "time_slot"]
-            )
-            .returning(Delivery.id)
-        )
-        if (await session.execute(stmt)).scalar_one_or_none() is not None:
-            created += 1
+            if (await session.execute(stmt)).scalar_one_or_none() is not None:
+                created += 1
 
     await session.flush()
     if created:

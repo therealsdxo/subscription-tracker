@@ -22,12 +22,21 @@ _ZERO = Decimal("0.00")
 Weekday = Annotated[int, Field(ge=1, le=7)]
 
 
+def _check_time_slots(slots: list[TimeSlot], note: str | None) -> None:
+    if not slots:
+        raise ValueError("delivery_time_slots must have at least one slot")
+    if len(set(slots)) != len(slots):
+        raise ValueError("delivery_time_slots must not repeat")
+    if TimeSlot.CUSTOM in slots and not note:
+        raise ValueError("delivery_time_slot_note is required when CUSTOM is one of the slots")
+
+
 class _DeliveryConfig(BaseModel):
     delivery_frequency: DeliveryFrequency
     delivery_weekdays: list[Weekday] | None = None
     custom_schedule: dict[str, Any] | None = None
     meals_per_delivery: int = Field(default=1, ge=1, le=10)
-    delivery_time_slot: TimeSlot
+    delivery_time_slots: list[TimeSlot] = Field(min_length=1)
     delivery_time_slot_note: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
@@ -44,8 +53,7 @@ class _DeliveryConfig(BaseModel):
             and not self.custom_schedule
         ):
             raise ValueError("custom_schedule is required for CUSTOM frequency")
-        if self.delivery_time_slot is TimeSlot.CUSTOM and not self.delivery_time_slot_note:
-            raise ValueError("delivery_time_slot_note is required for a CUSTOM slot")
+        _check_time_slots(self.delivery_time_slots, self.delivery_time_slot_note)
         return self
 
 
@@ -72,7 +80,7 @@ class SubscriptionUpdate(BaseModel):
     delivery_weekdays: list[Weekday] | None = None
     custom_schedule: dict[str, Any] | None = None
     meals_per_delivery: int | None = Field(default=None, ge=1, le=10)
-    delivery_time_slot: TimeSlot | None = None
+    delivery_time_slots: list[TimeSlot] | None = Field(default=None, min_length=1)
     delivery_time_slot_note: str | None = Field(default=None, max_length=200)
     delivery_address_id: int | None = None
 
@@ -80,6 +88,8 @@ class SubscriptionUpdate(BaseModel):
     def _at_least_one_field(self) -> SubscriptionUpdate:
         if not self.model_dump(exclude_unset=True):
             raise ValueError("no fields to update")
+        if self.delivery_time_slots is not None:
+            _check_time_slots(self.delivery_time_slots, self.delivery_time_slot_note)
         return self
 
 
@@ -175,7 +185,7 @@ class SubscriptionOut(BaseModel):
     delivery_frequency: DeliveryFrequency
     delivery_weekdays: list[int] | None
     meals_per_delivery: int
-    delivery_time_slot: TimeSlot
+    delivery_time_slots: list[TimeSlot]
     delivery_time_slot_note: str | None
     delivery_address_id: int | None
     snapshot_dietary_preference: DietaryPreference | None

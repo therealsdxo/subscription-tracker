@@ -25,6 +25,12 @@ const WEEKDAYS = [
 
 type Frequency = "DAILY" | "SPECIFIC_WEEKDAYS";
 type Slot = "MORNING" | "LUNCH" | "EVENING" | "CUSTOM";
+const SLOTS: { value: Slot; label: string }[] = [
+  { value: "MORNING", label: "Morning" },
+  { value: "LUNCH", label: "Lunch" },
+  { value: "EVENING", label: "Evening" },
+  { value: "CUSTOM", label: "Custom" },
+];
 
 function CustomerPicker({
   value,
@@ -104,7 +110,7 @@ export function SubscriptionFormDialog({
   const [frequency, setFrequency] = React.useState<Frequency>("DAILY");
   const [weekdays, setWeekdays] = React.useState<number[]>([]);
   const [mealsPerDelivery, setMealsPerDelivery] = React.useState(1);
-  const [slot, setSlot] = React.useState<Slot>("MORNING");
+  const [slots, setSlots] = React.useState<Slot[]>(["MORNING"]);
   const [slotNote, setSlotNote] = React.useState("");
   const [addressId, setAddressId] = React.useState<number | "">("");
   const [notes, setNotes] = React.useState("");
@@ -130,7 +136,7 @@ export function SubscriptionFormDialog({
     setFrequency("DAILY");
     setWeekdays([]);
     setMealsPerDelivery(1);
-    setSlot("MORNING");
+    setSlots(["MORNING"]);
     setSlotNote("");
     setAddressId("");
     setNotes("");
@@ -138,9 +144,13 @@ export function SubscriptionFormDialog({
   };
 
   const submit = async () => {
-    if (!selected || !packageId || !addressId) return;
+    if (!selected || !packageId || !addressId || slots.length === 0) return;
     if (frequency === "SPECIFIC_WEEKDAYS" && weekdays.length === 0) {
       toast({ title: "Pick at least one weekday", variant: "error" });
+      return;
+    }
+    if (slots.includes("CUSTOM") && !slotNote.trim()) {
+      toast({ title: "Add a note describing the custom slot", variant: "error" });
       return;
     }
     setBusy(true);
@@ -151,8 +161,8 @@ export function SubscriptionFormDialog({
         delivery_frequency: frequency,
         delivery_weekdays: frequency === "SPECIFIC_WEEKDAYS" ? weekdays : undefined,
         meals_per_delivery: mealsPerDelivery,
-        delivery_time_slot: slot,
-        delivery_time_slot_note: slot === "CUSTOM" ? slotNote : undefined,
+        delivery_time_slots: slots,
+        delivery_time_slot_note: slots.includes("CUSTOM") ? slotNote : undefined,
         delivery_address_id: Number(addressId),
         subscription_notes: notes || undefined,
       };
@@ -248,27 +258,17 @@ export function SubscriptionFormDialog({
             </Select>
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Frequency" htmlFor="freq">
-              <Select
-                id="freq"
-                className="w-full"
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value as Frequency)}
-              >
-                <option value="DAILY">Daily</option>
-                <option value="SPECIFIC_WEEKDAYS">Specific weekdays</option>
-              </Select>
-            </Field>
-            <Field label="Time slot" htmlFor="slot">
-              <Select id="slot" className="w-full" value={slot} onChange={(e) => setSlot(e.target.value as Slot)}>
-                <option value="MORNING">Morning</option>
-                <option value="LUNCH">Lunch</option>
-                <option value="EVENING">Evening</option>
-                <option value="CUSTOM">Custom</option>
-              </Select>
-            </Field>
-          </div>
+          <Field label="Frequency" htmlFor="freq">
+            <Select
+              id="freq"
+              className="w-full"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value as Frequency)}
+            >
+              <option value="DAILY">Daily</option>
+              <option value="SPECIFIC_WEEKDAYS">Specific weekdays</option>
+            </Select>
+          </Field>
 
           {frequency === "SPECIFIC_WEEKDAYS" ? (
             <div className="flex flex-wrap gap-1.5">
@@ -294,7 +294,34 @@ export function SubscriptionFormDialog({
             </div>
           ) : null}
 
-          {slot === "CUSTOM" ? (
+          <Field label="Time slots" htmlFor="slots">
+            <div id="slots" className="flex flex-wrap gap-1.5">
+              {SLOTS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() =>
+                    setSlots((prev) =>
+                      prev.includes(s.value) ? prev.filter((x) => x !== s.value) : [...prev, s.value],
+                    )
+                  }
+                  className={
+                    "rounded-[var(--radius-sm)] border px-2 py-1 text-[13px] " +
+                    (slots.includes(s.value)
+                      ? "border-accent bg-accent text-accent-fg"
+                      : "border-border-strong bg-surface text-text-muted")
+                  }
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <p className="text-text-muted -mt-2 text-[12px]">
+            Pick more than one slot to deliver to this customer multiple times a day.
+          </p>
+
+          {slots.includes("CUSTOM") ? (
             <Field label="Slot note" htmlFor="slot_note">
               <Input id="slot_note" value={slotNote} onChange={(e) => setSlotNote(e.target.value)} />
             </Field>
@@ -311,7 +338,7 @@ export function SubscriptionFormDialog({
           </Button>
           <Button
             size="sm"
-            disabled={busy || !selected || !packageId || !addressId}
+            disabled={busy || !selected || !packageId || !addressId || slots.length === 0}
             onClick={submit}
           >
             {busy ? "Saving…" : renewFrom ? "Renew" : "Create subscription"}

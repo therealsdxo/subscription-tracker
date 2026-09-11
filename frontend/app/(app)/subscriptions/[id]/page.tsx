@@ -178,7 +178,7 @@ export default function SubscriptionDetailPage() {
           <Row label="Frequency">{s.delivery_frequency}</Row>
           <Row label="Weekdays">{s.delivery_weekdays?.join(", ") ?? "—"}</Row>
           <Row label="Meals per delivery">{s.meals_per_delivery}</Row>
-          <Row label="Time slot">{s.delivery_time_slot}</Row>
+          <Row label="Time slots">{s.delivery_time_slots.join(", ")}</Row>
           <Row label="Time slot note">{s.delivery_time_slot_note ?? "—"}</Row>
           <Row label="Dietary preference">{s.snapshot_dietary_preference ?? "—"}</Row>
           <Row label="Notes">{s.subscription_notes ?? "—"}</Row>

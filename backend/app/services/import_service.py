@@ -95,9 +95,7 @@ def _build_subscription_fields(
         )
 
     try:
-        fields["delivery_time_slot"] = TimeSlot(
-            (data.get("time_slot") or "MORNING").upper()
-        )
+        fields["delivery_time_slots"] = [TimeSlot((data.get("time_slot") or "MORNING").upper())]
     except ValueError:
         errors.append(RowError(row=number, field="time_slot", message="unknown value"))
 

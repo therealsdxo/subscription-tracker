@@ -406,7 +406,7 @@ async def test_generation_uses_row_lock_across_transactions(
             snapshot_base_price=0, snapshot_tax_amount=0, snapshot_final_price=0,
             meals_allocated=25, meals_consumed=0, meals_adjustment=0,
             delivery_frequency=DeliveryFrequency.DAILY, meals_per_delivery=1,
-            delivery_time_slot=TimeSlot.MORNING, snapshot_delivery_address={},
+            delivery_time_slots=[TimeSlot.MORNING], snapshot_delivery_address={},
         )
         s.add(sub)
         await s.flush()

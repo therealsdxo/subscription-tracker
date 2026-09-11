@@ -1594,7 +1594,8 @@ export interface components {
              * @default 1
              */
             meals_per_delivery: number;
-            delivery_time_slot: components["schemas"]["TimeSlot"];
+            /** Delivery Time Slots */
+            delivery_time_slots: components["schemas"]["TimeSlot"][];
             /** Delivery Time Slot Note */
             delivery_time_slot_note?: string | null;
             /** Customer Id */
@@ -1669,7 +1670,8 @@ export interface components {
             delivery_weekdays: number[] | null;
             /** Meals Per Delivery */
             meals_per_delivery: number;
-            delivery_time_slot: components["schemas"]["TimeSlot"];
+            /** Delivery Time Slots */
+            delivery_time_slots: components["schemas"]["TimeSlot"][];
             /** Delivery Time Slot Note */
             delivery_time_slot_note: string | null;
             /** Delivery Address Id */
@@ -1810,7 +1812,8 @@ export interface components {
             delivery_weekdays: number[] | null;
             /** Meals Per Delivery */
             meals_per_delivery: number;
-            delivery_time_slot: components["schemas"]["TimeSlot"];
+            /** Delivery Time Slots */
+            delivery_time_slots: components["schemas"]["TimeSlot"][];
             /** Delivery Time Slot Note */
             delivery_time_slot_note: string | null;
             /** Delivery Address Id */
@@ -1873,7 +1876,8 @@ export interface components {
              * @default 1
              */
             meals_per_delivery: number;
-            delivery_time_slot: components["schemas"]["TimeSlot"];
+            /** Delivery Time Slots */
+            delivery_time_slots: components["schemas"]["TimeSlot"][];
             /** Delivery Time Slot Note */
             delivery_time_slot_note?: string | null;
             /** Package Id */
@@ -1905,7 +1909,8 @@ export interface components {
             custom_schedule?: Record<string, never> | null;
             /** Meals Per Delivery */
             meals_per_delivery?: number | null;
-            delivery_time_slot?: components["schemas"]["TimeSlot"] | null;
+            /** Delivery Time Slots */
+            delivery_time_slots?: components["schemas"]["TimeSlot"][] | null;
             /** Delivery Time Slot Note */
             delivery_time_slot_note?: string | null;
             /** Delivery Address Id */

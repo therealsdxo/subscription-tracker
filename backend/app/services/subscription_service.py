@@ -285,7 +285,7 @@ async def _build_and_persist(
     weekdays: list[int] | None,
     custom_schedule: dict[str, Any] | None,
     meals_per_delivery: int,
-    time_slot: TimeSlot,
+    time_slots: list[TimeSlot],
     time_slot_note: str | None,
     dietary_override: DietaryPreference | None,
     notes: str | None,
@@ -328,7 +328,7 @@ async def _build_and_persist(
         delivery_weekdays=weekdays,
         custom_schedule=custom_schedule,
         meals_per_delivery=meals_per_delivery,
-        delivery_time_slot=time_slot,
+        delivery_time_slots=time_slots,
         delivery_time_slot_note=time_slot_note,
         delivery_address_id=address.id,
         snapshot_delivery_address=_snapshot_address(address),
@@ -411,7 +411,7 @@ async def create_subscription(
         weekdays=payload.delivery_weekdays,
         custom_schedule=payload.custom_schedule,
         meals_per_delivery=payload.meals_per_delivery,
-        time_slot=payload.delivery_time_slot,
+        time_slots=payload.delivery_time_slots,
         time_slot_note=payload.delivery_time_slot_note,
         dietary_override=payload.dietary_preference_override,
         notes=payload.subscription_notes,
@@ -444,7 +444,7 @@ async def renew_subscription(
         weekdays=payload.delivery_weekdays,
         custom_schedule=payload.custom_schedule,
         meals_per_delivery=payload.meals_per_delivery,
-        time_slot=payload.delivery_time_slot,
+        time_slots=payload.delivery_time_slots,
         time_slot_note=payload.delivery_time_slot_note,
         dietary_override=payload.dietary_preference_override,
         notes=payload.subscription_notes,
@@ -474,8 +474,8 @@ async def update_subscription(
         sub.subscription_notes = data["subscription_notes"]
     if "meals_per_delivery" in data and data["meals_per_delivery"] is not None:
         sub.meals_per_delivery = data["meals_per_delivery"]
-    if "delivery_time_slot" in data and data["delivery_time_slot"] is not None:
-        sub.delivery_time_slot = data["delivery_time_slot"]
+    if "delivery_time_slots" in data and data["delivery_time_slots"] is not None:
+        sub.delivery_time_slots = data["delivery_time_slots"]
     if "delivery_time_slot_note" in data:
         sub.delivery_time_slot_note = data["delivery_time_slot_note"]
     if "delivery_frequency" in data and data["delivery_frequency"] is not None:
