@@ -111,7 +111,9 @@ class Subscription(TimestampMixin, Base):
     meals_per_delivery: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("1")
     )
-    delivery_time_slot: Mapped[TimeSlot] = mapped_column(_time_slot, nullable=False)
+    delivery_time_slots: Mapped[list[TimeSlot]] = mapped_column(
+        ARRAY(_time_slot), nullable=False
+    )
     delivery_time_slot_note: Mapped[str | None] = mapped_column(
         String(200), nullable=True
     )

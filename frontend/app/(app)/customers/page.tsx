@@ -1,8 +1,11 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { CustomerFormDialog } from "@/app/(app)/customers/customer-form-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   EmptyState,
@@ -12,6 +15,7 @@ import {
   StatusPill,
 } from "@/components/ui/misc";
 import { Pagination } from "@/components/ui/pagination";
+import { Select } from "@/components/ui/select";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { useCustomers } from "@/lib/api/hooks/customers";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -38,7 +42,19 @@ export default function CustomersPage() {
 
   return (
     <>
-      <PageHeader title="Customers" description="Search and open a customer record" />
+      <PageHeader
+        title="Customers"
+        description="Search and open a customer record"
+        actions={
+          <CustomerFormDialog
+            trigger={
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5" /> New customer
+              </Button>
+            }
+          />
+        }
+      />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Input
@@ -47,18 +63,17 @@ export default function CustomersPage() {
           onChange={(e) => onSearch(e.target.value)}
           className="max-w-xs"
         />
-        <select
+        <Select
           value={active}
           onChange={(e) => {
             setActive(e.target.value as ActiveFilter);
             setPage(1);
           }}
-          className="border-border-strong bg-surface h-9 rounded-[var(--radius-sm)] border px-2 text-sm"
         >
           <option value="all">All</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
-        </select>
+        </Select>
         {query.isFetching ? <Spinner /> : null}
       </div>
 

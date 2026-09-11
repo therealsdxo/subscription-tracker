@@ -56,7 +56,7 @@ def sub_payload(customer_id: int, package_id: int, address_id: int, **over: obje
         "package_id": package_id,
         "start_date": date.today().isoformat(),
         "delivery_frequency": "DAILY",
-        "delivery_time_slot": "MORNING",
+        "delivery_time_slots": ["MORNING"],
         "delivery_address_id": address_id,
     }
     body.update(over)
@@ -369,7 +369,7 @@ async def test_renew_creates_linked_pending_with_different_package(
             "package_id": other_pkg,
             "start_date": date.today().isoformat(),
             "delivery_frequency": "DAILY",
-            "delivery_time_slot": "MORNING",
+            "delivery_time_slots": ["MORNING"],
             "delivery_address_id": ctx["address_id"],
         },
     )
